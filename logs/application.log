@@ -1,0 +1,147 @@
+2025-06-10 12:11:43.150 [main] INFO  com.api.qualcy.docs.QualcyApplication - Starting QualcyApplication using Java 17.0.9 with PID 19628 (D:\work\project\qualyc\wsp\qualcy\target\classes started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-10 12:11:43.173 [main] INFO  com.api.qualcy.docs.QualcyApplication - The following 1 profile is active: "dev"
+2025-06-10 12:11:45.061 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-3000"]
+2025-06-10 12:11:45.065 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-06-10 12:11:45.065 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-06-10 12:11:45.183 [main] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-06-10 12:11:45.853 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 7d8f8831-f71b-41d1-9b86-8be5f5d979f2
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-10 12:11:46.267 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3000"]
+2025-06-10 12:11:46.347 [main] INFO  com.api.qualcy.docs.QualcyApplication - Started QualcyApplication in 4.281 seconds (process running for 6.606)
+2025-06-10 12:12:20.991 [http-nio-3000-exec-1] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-06-10 12:13:34.580 [main] INFO  com.api.qualcy.docs.QualcyApplication - Starting QualcyApplication using Java 17.0.9 with PID 31052 (D:\work\project\qualyc\wsp\qualcy\target\classes started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-10 12:13:34.595 [main] INFO  com.api.qualcy.docs.QualcyApplication - The following 1 profile is active: "dev"
+2025-06-10 12:13:35.982 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-3000"]
+2025-06-10 12:13:35.985 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-06-10 12:13:35.986 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-06-10 12:13:36.054 [main] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-06-10 12:13:36.453 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 85d701e6-cf8e-4fbe-8afb-fc3d00d2d9ee
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-10 12:13:36.783 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3000"]
+2025-06-10 12:13:36.833 [main] INFO  com.api.qualcy.docs.QualcyApplication - Started QualcyApplication in 2.834 seconds (process running for 3.858)
+2025-06-10 12:13:48.934 [http-nio-3000-exec-1] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-06-10 12:44:02.795 [main] INFO  com.api.qualcy.docs.QualcyApplication - Starting QualcyApplication using Java 17.0.9 with PID 35208 (D:\work\project\qualyc\wsp\qualcy\target\classes started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-10 12:44:02.916 [main] INFO  com.api.qualcy.docs.QualcyApplication - The following 1 profile is active: "dev"
+2025-06-10 12:44:04.586 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-3000"]
+2025-06-10 12:44:04.591 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-06-10 12:44:04.592 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-06-10 12:44:04.693 [main] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-06-10 12:44:05.160 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 4ca5b49c-c6b6-49ca-847c-e97e7fa447e5
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-10 12:44:05.566 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3000"]
+2025-06-10 12:44:05.636 [main] INFO  com.api.qualcy.docs.QualcyApplication - Started QualcyApplication in 3.437 seconds (process running for 4.542)
+2025-06-10 12:45:56.104 [http-nio-3000-exec-2] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-06-10 13:19:26.179 [main] INFO  com.api.qualcy.docs.QualcyApplication - Starting QualcyApplication using Java 17.0.9 with PID 45064 (D:\work\project\qualyc\wsp\qualcy\target\classes started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-10 13:19:26.205 [main] INFO  com.api.qualcy.docs.QualcyApplication - The following 1 profile is active: "dev"
+2025-06-10 13:19:27.825 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-3050"]
+2025-06-10 13:19:27.827 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-06-10 13:19:27.827 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-06-10 13:19:27.895 [main] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-06-10 13:19:28.400 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 5c3b7461-cc40-43b9-8717-8655df418c8c
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-10 13:19:28.746 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3050"]
+2025-06-10 13:19:28.824 [main] INFO  com.api.qualcy.docs.QualcyApplication - Started QualcyApplication in 3.201 seconds (process running for 4.907)
+2025-06-10 13:20:42.105 [main] INFO  com.api.qualcy.docs.QualcyApplication - Starting QualcyApplication using Java 17.0.9 with PID 38268 (D:\work\project\qualyc\wsp\qualcy\target\classes started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-10 13:20:42.118 [main] INFO  com.api.qualcy.docs.QualcyApplication - The following 1 profile is active: "dev"
+2025-06-10 13:20:43.497 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-3050"]
+2025-06-10 13:20:43.500 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-06-10 13:20:43.501 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-06-10 13:20:43.573 [main] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-06-10 13:20:44.035 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 0b5e82cc-bd7c-4aa6-b7c9-fd00d3cfc4cf
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-10 13:20:44.391 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3050"]
+2025-06-10 13:20:44.436 [main] INFO  com.api.qualcy.docs.QualcyApplication - Started QualcyApplication in 2.81 seconds (process running for 3.591)
+2025-06-10 13:21:20.395 [http-nio-3050-exec-1] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-06-10 13:28:59.043 [main] INFO  com.api.qualcy.docs.QualcyApplication - Starting QualcyApplication using Java 17.0.9 with PID 32464 (D:\work\project\qualyc\wsp\qualcy\target\classes started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-10 13:28:59.156 [main] INFO  com.api.qualcy.docs.QualcyApplication - The following 1 profile is active: "dev"
+2025-06-10 13:29:00.619 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-3050"]
+2025-06-10 13:29:00.623 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-06-10 13:29:00.623 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-06-10 13:29:00.675 [main] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-06-10 13:29:01.076 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 00ea9138-6c8a-4ffd-8f23-5c23bee6f828
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-10 13:29:01.408 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3050"]
+2025-06-10 13:29:01.451 [main] INFO  com.api.qualcy.docs.QualcyApplication - Started QualcyApplication in 2.904 seconds (process running for 3.865)
+2025-06-10 13:30:02.352 [main] INFO  com.api.qualcy.docs.QualcyApplication - Starting QualcyApplication using Java 17.0.9 with PID 1336 (D:\work\project\qualyc\wsp\qualcy\target\classes started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-10 13:30:02.368 [main] INFO  com.api.qualcy.docs.QualcyApplication - The following 1 profile is active: "dev"
+2025-06-10 13:30:03.687 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-3050"]
+2025-06-10 13:30:03.690 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-06-10 13:30:03.691 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-06-10 13:30:03.743 [main] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-06-10 13:30:04.125 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 034cdd53-b36f-4d6f-908d-eefe35652e8b
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-10 13:30:04.403 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3050"]
+2025-06-10 13:30:04.450 [main] INFO  com.api.qualcy.docs.QualcyApplication - Started QualcyApplication in 2.574 seconds (process running for 3.362)
+2025-06-10 13:31:21.114 [main] INFO  com.api.qualcy.docs.QualcyApplication - Starting QualcyApplication using Java 17.0.9 with PID 24032 (D:\work\project\qualyc\wsp\qualcy\target\classes started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-10 13:31:21.128 [main] INFO  com.api.qualcy.docs.QualcyApplication - The following 1 profile is active: "dev"
+2025-06-10 13:31:22.471 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-3050"]
+2025-06-10 13:31:22.473 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-06-10 13:31:22.473 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-06-10 13:31:22.536 [main] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-06-10 13:31:22.905 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: de1870a4-7575-495e-8cd3-c2b353322383
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-10 13:31:23.172 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3050"]
+2025-06-10 13:31:23.226 [main] INFO  com.api.qualcy.docs.QualcyApplication - Started QualcyApplication in 2.611 seconds (process running for 3.411)
+2025-06-10 13:31:56.994 [http-nio-3050-exec-1] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-06-10 13:36:46.572 [main] INFO  com.api.qualcy.docs.QualcyApplication - Starting QualcyApplication using Java 17.0.9 with PID 28152 (D:\work\project\qualyc\wsp\qualcy\target\classes started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-10 13:36:46.586 [main] INFO  com.api.qualcy.docs.QualcyApplication - The following 1 profile is active: "dev"
+2025-06-10 13:36:47.853 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-3050"]
+2025-06-10 13:36:47.855 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-06-10 13:36:47.857 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-06-10 13:36:47.909 [main] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-06-10 13:36:48.269 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 3cf0b2c5-a45d-47c7-9dc3-01ee8e3c099d
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-10 13:36:48.539 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3050"]
+2025-06-10 13:36:48.587 [main] INFO  com.api.qualcy.docs.QualcyApplication - Started QualcyApplication in 2.511 seconds (process running for 3.32)
+2025-06-10 13:37:04.063 [http-nio-3050-exec-1] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-06-10 13:42:58.844 [main] INFO  com.api.qualcy.docs.QualcyApplication - Starting QualcyApplication using Java 17.0.9 with PID 17188 (D:\work\project\qualyc\wsp\qualcy\target\classes started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-10 13:42:58.858 [main] INFO  com.api.qualcy.docs.QualcyApplication - The following 1 profile is active: "dev"
+2025-06-10 13:43:00.445 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-3050"]
+2025-06-10 13:43:00.447 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-06-10 13:43:00.449 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-06-10 13:43:00.568 [main] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-06-10 13:43:00.959 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: c7c3f941-d449-4c3e-9e0e-909ca74dbd89
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-10 13:43:01.231 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3050"]
+2025-06-10 13:43:01.286 [main] INFO  com.api.qualcy.docs.QualcyApplication - Started QualcyApplication in 2.959 seconds (process running for 3.725)
+2025-06-10 13:43:07.162 [http-nio-3050-exec-1] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
