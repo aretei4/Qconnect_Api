@@ -2,12 +2,14 @@ package com.api.qualcy.docs.security;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
 import io.github.cdimascio.dotenv.Dotenv;
 import jakarta.annotation.PostConstruct;
 
-@Configuration
+//@Configuration
+//@ComponentScan(basePackages = "com.api.qualcy.docs")
 public class AppConfig {
     
     @Value("${user.home}")

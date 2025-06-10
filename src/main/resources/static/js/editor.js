@@ -9,7 +9,7 @@ async function openEditor() {
 async function sendData() {
       const payload = {
 		 // fileUrl: "https://dbqualcy.s3.ap-south-1.amazonaws.com/sampledoc.docx",
-		  fileUrl: "http://localhost:3000/download",
+		  fileUrl: "http://13.204.49.246:3000/download",
         user: {
         id: "Subash",
         name: "Subash Rout",
@@ -17,7 +17,7 @@ async function sendData() {
       };
 
       try {
-        const response = await fetch('http://localhost:3000/api/data', {
+        const response = await fetch('http://13.204.49.246:3000/api/data', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

@@ -145,3 +145,45 @@ This generated password is for development use only. Your security configuration
 2025-06-10 13:43:01.231 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3050"]
 2025-06-10 13:43:01.286 [main] INFO  com.api.qualcy.docs.QualcyApplication - Started QualcyApplication in 2.959 seconds (process running for 3.725)
 2025-06-10 13:43:07.162 [http-nio-3050-exec-1] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-06-10 16:27:10.665 [main] INFO  com.api.qualcy.docs.QualcyApplication - Starting QualcyApplication using Java 17.0.9 with PID 33140 (D:\work\project\qualyc\wsp\qualcy\target\classes started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-10 16:27:10.815 [main] INFO  com.api.qualcy.docs.QualcyApplication - The following 1 profile is active: "dev"
+2025-06-10 16:27:12.340 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-3050"]
+2025-06-10 16:27:12.344 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-06-10 16:27:12.344 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-06-10 16:27:12.423 [main] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-06-10 16:27:12.882 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 03fa56b6-4c42-473b-9b1b-eb4cfe91a8b7
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-10 16:27:13.369 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3050"]
+2025-06-10 16:27:13.431 [main] INFO  com.api.qualcy.docs.QualcyApplication - Started QualcyApplication in 3.367 seconds (process running for 4.591)
+2025-06-10 16:27:41.976 [http-nio-3050-exec-1] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-06-10 16:35:41.884 [main] INFO  com.api.qualcy.docs.QualcyApplicationTests - Starting QualcyApplicationTests using Java 17.0.14 with PID 17636 (started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-10 16:35:41.910 [main] INFO  com.api.qualcy.docs.QualcyApplicationTests - The following 1 profile is active: "dev"
+2025-06-10 16:35:44.299 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 48d387a1-a8d6-4eb9-a268-2d4e8ae268b9
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-10 16:35:44.842 [main] INFO  com.api.qualcy.docs.QualcyApplicationTests - Started QualcyApplicationTests in 3.67 seconds (process running for 6.083)
+2025-06-10 17:21:16.291 [main] INFO  com.api.qualcy.docs.QualcyApplicationTests - Starting QualcyApplicationTests using Java 17.0.14 with PID 7488 (started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-10 17:21:16.329 [main] INFO  com.api.qualcy.docs.QualcyApplicationTests - The following 1 profile is active: "dev"
+2025-06-10 17:21:19.067 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: f50726b2-2d00-4a2b-a6a6-2402c31502a6
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-10 17:21:19.690 [main] INFO  com.api.qualcy.docs.QualcyApplicationTests - Started QualcyApplicationTests in 4.048 seconds (process running for 6.2)
+2025-06-10 17:27:11.748 [main] INFO  com.api.qualcy.docs.QualcyApplicationTests - Starting QualcyApplicationTests using Java 17.0.14 with PID 19780 (started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-10 17:27:11.768 [main] INFO  com.api.qualcy.docs.QualcyApplicationTests - The following 1 profile is active: "dev"
+2025-06-10 17:27:13.773 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 0f88aad8-058e-49c9-ac7c-2e46e975ce7f
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-10 17:27:14.403 [main] INFO  com.api.qualcy.docs.QualcyApplicationTests - Started QualcyApplicationTests in 3.124 seconds (process running for 6.329)

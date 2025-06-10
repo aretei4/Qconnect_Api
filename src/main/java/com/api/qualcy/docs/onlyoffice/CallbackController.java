@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CallbackController {
 
    // @Value("${onlyoffice.storage.folder}")
-    private String storagePath="";
+    private String storagePath="./storage";
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -41,6 +41,7 @@ public class CallbackController {
                 String downloadUri = (String) body.get("url");
                 System.out.println(downloadUri);
                 String fileName = "example.docx";
+              //  Path file = Paths.get("./storage").resolve(filename);
                 Path path = Paths.get(storagePath, fileName);
 
                 try (InputStream in = new URL(downloadUri).openStream()) {
