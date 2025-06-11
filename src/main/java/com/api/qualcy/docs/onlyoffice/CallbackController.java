@@ -11,6 +11,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -25,6 +26,7 @@ public class CallbackController {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @CrossOrigin(origins = "*")
     @PostMapping("/save")
     public ResponseEntity<?> saveDocument(@RequestBody Map<String, Object> body,
                                           @RequestHeader(value = "Authorization", required = false) String authHeader) {

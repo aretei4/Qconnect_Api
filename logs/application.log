@@ -207,3 +207,22 @@ This generated password is for development use only. Your security configuration
 2025-06-11 14:04:54.794 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3050"]
 2025-06-11 14:04:54.861 [main] INFO  com.api.qualcy.docs.QualcyApplication - Started QualcyApplication in 4.795 seconds (process running for 7.4)
 2025-06-11 14:05:21.217 [http-nio-3050-exec-1] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-06-11 16:22:58.895 [main] INFO  com.api.qualcy.docs.QualcyApplication - Starting QualcyApplication using Java 17.0.9 with PID 49416 (D:\work\project\qualyc\wsp\qualcy\target\classes started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-11 16:22:58.907 [main] INFO  com.api.qualcy.docs.QualcyApplication - The following 1 profile is active: "dev"
+2025-06-11 16:23:00.239 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-3050"]
+2025-06-11 16:23:00.242 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-06-11 16:23:00.243 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-06-11 16:23:00.323 [main] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-06-11 16:23:00.702 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: f8aa1c9c-9f90-4a50-b8df-6331cf618d27
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-11 16:23:00.944 [main] WARN  org.springframework.security.config.annotation.web.builders.WebSecurityFilterChainValidator - Usage of authorizeRequests is deprecated. Please use authorizeHttpRequests in the configuration
+2025-06-11 16:23:00.946 [main] WARN  org.springframework.security.config.annotation.web.builders.WebSecurityFilterChainValidator - Usage of authorizeRequests is deprecated. Please use authorizeHttpRequests in the configuration
+2025-06-11 16:23:00.948 [main] WARN  org.springframework.security.config.annotation.web.builders.WebSecurityFilterChainValidator - Usage of authorizeRequests is deprecated. Please use authorizeHttpRequests in the configuration
+2025-06-11 16:23:00.950 [main] WARN  org.springframework.security.config.annotation.web.builders.WebSecurityFilterChainValidator - Usage of authorizeRequests is deprecated. Please use authorizeHttpRequests in the configuration
+2025-06-11 16:23:00.986 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3050"]
+2025-06-11 16:23:01.043 [main] INFO  com.api.qualcy.docs.QualcyApplication - Started QualcyApplication in 2.632 seconds (process running for 3.395)
+2025-06-11 16:23:47.299 [http-nio-3050-exec-2] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
