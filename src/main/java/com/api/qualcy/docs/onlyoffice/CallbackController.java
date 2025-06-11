@@ -40,10 +40,11 @@ public class CallbackController {
             if (status == 2 || status == 3) { // 2 = ready for saving, 3 = corrupted
                 String downloadUri = (String) body.get("url");
                 System.out.println(downloadUri);
-                String fileName = "example.docx";
+                Path path = Paths.get(System.getProperty("user.home"), "data", "example.docx");
+             //   String fileName = "example.docx";
               //  Path file = Paths.get("./storage").resolve(filename);
-                Path path = Paths.get(storagePath, fileName);
-
+                //Path path = Paths.get(storagePath, fileName);
+                System.out.println("  %%%%%%%%  "+path);
                 try (InputStream in = new URL(downloadUri).openStream()) {
                     Files.copy(in, path, StandardCopyOption.REPLACE_EXISTING);
                 }
