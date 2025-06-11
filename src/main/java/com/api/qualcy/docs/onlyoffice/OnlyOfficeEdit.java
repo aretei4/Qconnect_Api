@@ -110,13 +110,9 @@ public class OnlyOfficeEdit {
     public ResponseEntity<Resource> getFile(@PathVariable String filename) throws IOException {
     	// Using Paths (modern)
     	Path file = Paths.get(System.getProperty("user.home"), "data", filename);
-
-    	// Using File (legacy)
-    //	File f = new File(System.getProperty("user.home"), "data/file.csv");
-     //   Path file = Paths.get("./storage").resolve(filename);
         Resource resource = new UrlResource(file.toUri());
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                 .body(resource);
     }
 
