@@ -42,27 +42,15 @@ public class SecurityConfig {
             .logout(logout -> logout
                 .permitAll()
             );
+            */
             	http
         .authorizeHttpRequests(auth -> auth
             .anyRequest().permitAll()
             // Allow access to all endpoints
         );
-*/
+
     
-    	http
-        // Disable CSRF protection for all endpoints
-        .csrf().disable()
-        
-        // Disable default security headers (optional)
-        .headers().disable()
-        
-        // Configure authorization
-        .authorizeRequests(authorize -> authorize
-        		 .anyRequest() // Match all endpoints
-            .permitAll()          // Allow access without authentication
-        );
     	
-    
      //   .csrf(csrf -> csrf.en()); // Disable CSRF for simplicity
         return http.build();
     }
