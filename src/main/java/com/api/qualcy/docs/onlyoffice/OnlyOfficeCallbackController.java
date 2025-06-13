@@ -25,8 +25,11 @@ public class OnlyOfficeCallbackController {
    
     @PostMapping("/onlyoffice-callback")
     public ResponseEntity<String> handleCallback(@RequestBody OnlyOfficeCallback callback) {
+    	System.out.println("  service called %%%%%%%%%%%%%%%%%%%%%%%%%%%%   ");
+    	  return ResponseEntity.ok("{\"error\":0}");
+    	  
         // 1. Validate token (if enabled)
-        if (ONLYOFFICE_SECRET != null && !ONLYOFFICE_SECRET.isEmpty()) {
+      /*  if (ONLYOFFICE_SECRET != null && !ONLYOFFICE_SECRET.isEmpty()) {
             String expectedToken = new HmacUtils(HmacAlgorithms.HMAC_SHA_256, ONLYOFFICE_SECRET)
                     .hmacHex(callback.getKey() + callback.getStatus());
             
@@ -54,7 +57,7 @@ public class OnlyOfficeCallbackController {
                 
             default: // Status 0 (editing) or others
                 return ResponseEntity.ok("{\"error\":0}");
-        }
+        }*/
     }
 
     private void saveDocument(String documentUrl, String documentKey) {

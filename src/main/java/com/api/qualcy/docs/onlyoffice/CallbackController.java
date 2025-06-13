@@ -30,7 +30,9 @@ public class CallbackController {
     @PostMapping("/save")
     public ResponseEntity<?> saveDocument(@RequestBody Map<String, Object> body,
                                           @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        try {
+       
+    	System.out.println("  service called %%%%%%%%%%%%%%%%%%%%%%%%%%%%   ");
+    	/* try {
             // Verify JWT
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
@@ -56,7 +58,7 @@ public class CallbackController {
 
         } catch (Exception e) {
             e.printStackTrace();
-        }
+        }*/
 
         return ResponseEntity.ok(Map.of("error", 1));
     }

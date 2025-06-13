@@ -31,7 +31,7 @@ async function sendData() {
       };
 
       try {
-        const response = await fetch('http://13.204.49.246:3000/api/data', {
+        const response = await fetch('http://localhost:3000/api/data', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
