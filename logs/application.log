@@ -13,3 +13,46 @@ This generated password is for development use only. Your security configuration
 2025-06-13 15:45:51.056 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3050"]
 2025-06-13 15:45:51.114 [main] INFO  com.api.qualcy.docs.QualcyApplication - Started QualcyApplication in 3.159 seconds (process running for 3.993)
 2025-06-13 15:46:32.838 [http-nio-3050-exec-1] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-06-13 16:45:14.027 [main] INFO  com.api.qualcy.docs.QualcyApplication - Starting QualcyApplication using Java 17.0.9 with PID 19368 (D:\work\project\qualyc\wsp\qualcy\target\classes started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-13 16:45:14.042 [main] INFO  com.api.qualcy.docs.QualcyApplication - The following 1 profile is active: "dev"
+2025-06-13 16:45:15.411 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-3050"]
+2025-06-13 16:45:15.413 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-06-13 16:45:15.413 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-06-13 16:45:15.474 [main] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-06-13 16:45:15.826 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: c57a9e26-62d1-4ab2-b024-2d3a240359d1
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-13 16:45:16.115 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3050"]
+2025-06-13 16:45:16.175 [main] INFO  com.api.qualcy.docs.QualcyApplication - Started QualcyApplication in 2.678 seconds (process running for 3.484)
+2025-06-13 16:45:34.588 [http-nio-3050-exec-1] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-06-13 17:15:42.919 [main] INFO  com.api.qualcy.docs.QualcyApplication - Starting QualcyApplication using Java 17.0.9 with PID 11828 (D:\work\project\qualyc\wsp\qualcy\target\classes started by USER in D:\work\project\qualyc\wsp\qualcy)
+2025-06-13 17:15:42.930 [main] INFO  com.api.qualcy.docs.QualcyApplication - The following 1 profile is active: "dev"
+2025-06-13 17:15:44.275 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-3050"]
+2025-06-13 17:15:44.278 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-06-13 17:15:44.278 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-06-13 17:15:44.327 [main] INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-06-13 17:15:44.660 [main] WARN  org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: dda14765-ef20-427b-be3b-ad126c8a0b5b
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-06-13 17:15:44.903 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-3050"]
+2025-06-13 17:15:44.918 [main] WARN  org.springframework.boot.web.servlet.context.AnnotationConfigServletWebServerApplicationContext - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Failed to start bean 'webServerStartStop'
+2025-06-13 17:15:45.052 [main] ERROR org.springframework.boot.diagnostics.LoggingFailureAnalysisReporter - 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Web server failed to start. Port 3050 was already in use.
+
+Action:
+
+Identify and stop the process that's listening on port 3050 or configure this application to listen on another port.
+
