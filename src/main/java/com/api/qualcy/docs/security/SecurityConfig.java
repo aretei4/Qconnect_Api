@@ -15,7 +15,7 @@ public class SecurityConfig {
 	
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-    	System.out.println("   insidesecurityFilterChain ");
+    	System.out.println("   insidesecurityFilterChain  ************  ");
         /*http
             .authorizeHttpRequests(auth -> auth
                 // Allow access to static resources
