@@ -12,7 +12,7 @@ async function sendData() {
   	const template = urlParams.get('template');
   	console.log('Username:', fileName);
   	console.log('Age:', template);
-  	var downladFile = "subash_"+fileName; 
+  	var downladFile = fileName; 
   	if(template == 'new'){
 		  downladFile = "new_"+fileName;
 	  }else{
@@ -23,6 +23,7 @@ async function sendData() {
       const payload = {
 		 // fileUrl: "https://dbqualcy.s3.ap-south-1.amazonaws.com/sampledoc.docx",
 		  fileUrl: "http://13.204.49.246:3050/files/"+downladFile,		
+		    //fileUrl: "http://localhost:3000/download",
         user: {
         id: "Subash",
         name: "Subash Rout",
