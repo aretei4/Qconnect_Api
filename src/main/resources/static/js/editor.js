@@ -32,7 +32,7 @@ async function sendData() {
       };
 
       try {
-        const response = await fetch('http://localhost:3050/onlyoffice/config', {
+        const response = await fetch('http://13.204.49.246:3050/onlyoffice/config', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
