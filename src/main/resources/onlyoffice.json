@@ -1,0 +1,45 @@
+{
+  "document": {
+    "fileType": "docx",
+    "key": "1750072275924yn3vhg0ts9r",
+    "title": "My Document.docx",
+    "url": "http://13.204.49.246:3050/files/sample_v01.docx",
+    "permissions": {
+      "deleteCommentAuthorOnly": false,
+      "download": true,
+      "edit": true,
+      "editCommentAuthorOnly": false,
+      "fillForms": true,
+      "modifyContentControl": true,
+      "modifyFilter": true,
+      "print": true,
+      "protect": true,
+      "review": false
+    }
+  },
+  "editorConfig": {
+    "callbackUrl": "http://13.204.49.246:3050/save",
+    "user": {
+      "id": "Subash",
+      "name": "Subash Rout",
+      "fileName": "sample_v01.docx"
+    },
+    "permissions": {
+      "edit": true,
+      "download": true,
+      "print": true
+    },
+    "customization": {
+      "about": true,
+      "anonymous": {
+        "request": true,
+        "label": "Guest"
+      },
+      "autosave": true,
+      "close": {
+        "visible": true,
+        "text": "Close file"
+      }
+    }
+  }  
+}
