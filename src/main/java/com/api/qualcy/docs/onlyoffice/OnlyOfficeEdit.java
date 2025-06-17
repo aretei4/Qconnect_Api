@@ -2,6 +2,7 @@ package com.api.qualcy.docs.onlyoffice;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -49,10 +50,18 @@ public class OnlyOfficeEdit {
 	   public Map<String, Object> getOnlyOfficeConfig(@RequestBody Map<String, Object> body) {
 		   ObjectMapper mapper = new ObjectMapper();
 		   File file = new File("src/main/resources/onlyoffice.json");
+		   InputStream inputStream = getClass().getClassLoader().getResourceAsStream("onlyoffice.json");
+
+		  // if (inputStream == null) {
+		    //   throw new FileNotFoundException("File not found: onlyoffice.json");
+		   //}
+
+		   // You can now read the InputStream
+
 	        try {
 	        	String fileUrl = (String) body.get("fileUrl");
                 System.out.println(fileUrl);
-				Map<String, Object> jsonMap = mapper.readValue(file, Map.class);
+				Map<String, Object> jsonMap = mapper.readValue(inputStream, Map.class);
 				 Map<String, Object> document = (Map<String, Object>)jsonMap.get("document");
 				 document.put("key", UUID.randomUUID().toString());
 				 document.put("url", fileUrl); 
