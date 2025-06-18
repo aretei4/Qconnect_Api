@@ -1,6 +1,7 @@
 package com.api.qualcy.docs.onlyoffice;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
 import javax.crypto.SecretKey;
@@ -12,13 +13,14 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoder;
 import io.jsonwebtoken.security.Keys;
 
 @Component
 public class JwtUtil {
 
   //  @Value("${onlyoffice.jwt.secret}")
-    private String secret= "fJ2lTiubmBQwXIrG9NfLFGEHbeQmwYsl";
+    private  String secret= "fJ2lTiubmBQwXIrG9NfLFGEHbeQmwYsl";
 
     public String sign(Map<String, Object> payload) {
     	// Set expiration time (e.g., 1 hour from now)
@@ -34,11 +36,14 @@ public class JwtUtil {
                 .compact();
     }
 
-    public Jws<Claims> verify(String token) {
+ 
+    
+ 
+    public  Map<String, Object> verify(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(Keys.hmacShaKeyFor(secret.getBytes()))
                 .build()
-                .parseClaimsJws(token);
+                .parseClaimsJws(token).getBody();
     }
 }
 

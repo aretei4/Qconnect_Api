@@ -41,15 +41,13 @@ public class OnlyOfficeEdit {
 	    private String docServerUrl;
 	   
 	   
-	 //  String fileName = "example.docx";
-	  // String fileUrl = "http://13.204.49.246:3000/download";//"http://localhost:3000/files/" + fileName;
-	   String callbackUrl = "http://13.204.49.246:3050/save";
+	    String callbackUrl = "http://13.204.49.246:3050/save";
 			   
 	   @PostMapping("/onlyoffice/config")
 	   @ResponseBody
 	   public Map<String, Object> getOnlyOfficeConfig(@RequestBody Map<String, Object> body) {
 		   ObjectMapper mapper = new ObjectMapper();
-		   File file = new File("src/main/resources/onlyoffice.json");
+		  // File file = new File("src/main/resources/onlyoffice.json");
 		   InputStream inputStream = getClass().getClassLoader().getResourceAsStream("onlyoffice.json");
 
 		  // if (inputStream == null) {
