@@ -25,7 +25,7 @@
       "fileName": "sample_v01.docx"
     },
     "permissions": {
-      "edit": true,
+      "edit": false,
       "download": true,
       "print": true
     },

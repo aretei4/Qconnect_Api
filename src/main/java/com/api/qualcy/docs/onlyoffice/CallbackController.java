@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,11 +40,13 @@ public class CallbackController {
             // Verify JWT
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
             	String token = authHeader.substring(7);
+            	System.out.println(token);
                 Map claimsMap=  jwtUtil.verify(token);
                 Map usermap = (Map)((Map)claimsMap.get("editorConfig")).get("user");
                 fileName = (String)usermap.get("fileName");
-                System.out.println(token);
-               // jwtUtil.verify(token); // throws if invalid
+                List<String> users = (List<String>) body.get("users");
+                System.out.println(users+"%%%%%%%%%%%%  file name "+fileName); 
+               
             }
 
             int status = (Integer) body.get("status");

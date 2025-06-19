@@ -71,6 +71,7 @@ public class OnlyOfficeEdit {
 				 String token = jwtUtil.sign(jsonMap);
 				  System.out.println(token);
 				jsonMap.put("token", token);
+				jsonMap.put("lockedBy", "Subash Rout");
 				  return jsonMap;
 			}  catch (Exception e) {
 				// TODO Auto-generated catch block
@@ -83,49 +84,7 @@ public class OnlyOfficeEdit {
 	   }
 	   
 	   
-	@GetMapping("/edit")
-	public String editDoc(Model model) throws JsonProcessingException {
-	   
-	    Map<String, Object> config = new LinkedHashMap<>();
-	    config.put("document", Map.of(
-	            "fileType", "docx",
-	            "key", UUID.randomUUID().toString(),
-	           // "title", fileName,
-	   //         "url", fileUrl,
-	            "permissions",Map.of(
-	            "download", true,
-	   			"edit", true,
-	   			"editCommentAuthorOnly", true,
-	   			"fillForms", true,
-	   			"modifyContentControl", true,
-	   			"modifyFilter", true,
-	   			"print", true,
-	   			"protect", true,
-	   			"deleteCommentAuthorOnly", true
-	            )
-	    ));
-	    config.put("documentType", "word");
-	    config.put("editorConfig", Map.of(
-	            "callbackUrl", "http://13.204.49.246:3000/save",
-	            //"mode", "edit",
-	            //"lang", "en",
-	            "user", Map.of("id", "user-1", "name", "John Doe"),
-	            "permissions",Map.of(
-	    	            "download", true,
-	    	   			"edit", true,
-	    	   			"print",true
-	    	            )
-	    ));
-
-	    String token = jwtUtil.sign(config);
-	    config.put("token", token);
-	    System.out.println(token);
-	    model.addAttribute("config", new ObjectMapper().writeValueAsString(config));
-	    model.addAttribute("docServerUrl", docServerUrl);
-	    return "editor";
-	}
-	
-	
+		
 	// For file serving
     @GetMapping("/files/{filename:.+}")
     @ResponseBody

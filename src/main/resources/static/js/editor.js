@@ -8,15 +8,15 @@ async function openEditor() {
 }
 async function sendData() {
 	const urlParams = new URLSearchParams(window.location.search);
-  	const fileName = urlParams.get('fileName');
-  	const template = urlParams.get('template');
-  	console.log('Username:', fileName);
-  	console.log('Age:', template);
-  	var downladFile = fileName; 
-  	if(template == 'new'){
-		  downladFile = "new_"+fileName;
+  	const srcfile = urlParams.get('srcfile');
+  	const destfile = urlParams.get('destfile');
+  	console.log('srcfile:', srcfile);
+  	console.log('destfile:', destfile);
+  	var downladFile = destfile; 
+  	if(srcfile == 'new'){
+		  downladFile = "new_template.docx";
 	  }else{
-		 downladFile = "sample_v01.docx";
+		 downladFile =srcfile;
 	  }
 	  console.log('fileName:', downladFile);
 	  
@@ -27,12 +27,12 @@ async function sendData() {
         user: {
         id: "Subash",
         name: "Subash Rout",
-          fileName: downladFile,
+        fileName: destfile,
       }
       };
 
       try {
-        const response = await fetch('http://13.204.49.246:3050/onlyoffice/config', {
+        const response = await fetch('http://localhost:3050/onlyoffice/config', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
