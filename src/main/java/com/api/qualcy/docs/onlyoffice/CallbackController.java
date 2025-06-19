@@ -45,7 +45,7 @@ public class CallbackController {
                 //Map usermap = (Map)((Map)claimsMap.get("editorConfig")).get("user");
                 //fileName = (String)usermap.get("fileName");
                
-                System.out.println(users+"%%%%%%%%%%%%  file name "+fileName); 
+               // System.out.println(users+"%%%%%%%%%%%%  file name "+fileName); 
                
             }
 
