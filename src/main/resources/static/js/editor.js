@@ -23,11 +23,11 @@ async function sendData() {
       const payload = {
 		 // fileUrl: "https://dbqualcy.s3.ap-south-1.amazonaws.com/sampledoc.docx",
 		  fileUrl: "http://13.204.49.246:3050/files/"+downladFile,		
-		    //fileUrl: "http://localhost:3000/download",
+		   destFile:destfile,
         user: {
         id: "Subash",
         name: "Subash Rout",
-        fileName: destfile,
+       // fileName: destfile,
       }
       };
 

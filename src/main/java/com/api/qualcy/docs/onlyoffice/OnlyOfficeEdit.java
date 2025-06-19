@@ -41,7 +41,7 @@ public class OnlyOfficeEdit {
 	    private String docServerUrl;
 	   
 	   
-	    String callbackUrl = "http://13.204.49.246:3050/save";
+	    String callbackUrl = "http://13.204.49.246:3050/save?filename=";
 			   
 	   @PostMapping("/onlyoffice/config")
 	   @ResponseBody
@@ -58,6 +58,12 @@ public class OnlyOfficeEdit {
 
 	        try {
 	        	String fileUrl = (String) body.get("fileUrl");
+	        	String destFile = (String) body.get("destFile");
+	        	if(null !=destFile && destFile.isEmpty()) {
+	        		callbackUrl = callbackUrl+"sample_v03.docx";
+	        	}else {
+	        		callbackUrl = destFile;
+	        	}
                 System.out.println(fileUrl);
 				Map<String, Object> jsonMap = mapper.readValue(inputStream, Map.class);
 				 Map<String, Object> document = (Map<String, Object>)jsonMap.get("document");
