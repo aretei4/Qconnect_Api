@@ -32,19 +32,19 @@ public class CallbackController {
     public ResponseEntity<?> saveDocument(@RequestBody Map<String, Object> body,
                                           @RequestHeader(value = "Authorization", required = false) String authHeader) {
        
-    	String fileName = "sample.docx";
-    	System.out.println("  service called %%%%%%%%%%%%%%%%%%%%%%%%%%%%   ");
+    	String fileName = "sample_v02.docx";
+    	System.out.println("  service called %%%%%%%%%%%%%%%%%%%%%%%%%%%%   "+body);
     	 
     	 try {
     		
             // Verify JWT
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
             	String token = authHeader.substring(7);
-            	System.out.println(token);
-                Map claimsMap=  jwtUtil.verify(token);
-                Map usermap = (Map)((Map)claimsMap.get("editorConfig")).get("user");
-                fileName = (String)usermap.get("fileName");
-                List<String> users = (List<String>) body.get("users");
+            	//System.out.println(token);
+              //  Map claimsMap=  jwtUtil.verify(token);
+                //Map usermap = (Map)((Map)claimsMap.get("editorConfig")).get("user");
+                //fileName = (String)usermap.get("fileName");
+               
                 System.out.println(users+"%%%%%%%%%%%%  file name "+fileName); 
                
             }
@@ -52,7 +52,10 @@ public class CallbackController {
             int status = (Integer) body.get("status");
             if (status == 2 || status == 6 || status == 7) { // 2 = ready for saving, 3 = corrupted
                 String downloadUri = (String) body.get("url");
-                System.out.println(downloadUri);
+                String token = (String) body.get("token");
+                List<String> users = (List<String>) body.get("users");
+                System.out.println(token);
+                System.out.println(users+""+downloadUri);
                 Path path = Paths.get(System.getProperty("user.home"), "data", fileName);
                 System.out.println("  %%%%%%%%  "+path);
                 try (InputStream in = new URL(downloadUri).openStream()) {
@@ -66,7 +69,7 @@ public class CallbackController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.ok(Map.of("error", 1));
+            return ResponseEntity.ok(Map.of("error", 0));
         }
 
        
