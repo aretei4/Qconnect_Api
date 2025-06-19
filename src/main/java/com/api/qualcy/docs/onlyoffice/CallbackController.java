@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -30,23 +31,18 @@ public class CallbackController {
     @CrossOrigin(origins = "*")
     @PostMapping("/save")
     public ResponseEntity<?> saveDocument(@RequestBody Map<String, Object> body,
-                                          @RequestHeader(value = "Authorization", required = false) String authHeader) {
+                                          @RequestHeader(value = "Authorization", required = false) String authHeader,
+                                          @RequestParam(name = "filename", required = false, defaultValue = "sample_v02.docx") String fileName) {
        
-    	String fileName = "sample_v02.docx";
-    	System.out.println("  service called %%%%%%%%%%%%%%%%%%%%%%%%%%%%   "+body);
+    //	String fileName = "sample_v02.docx";
+    	System.out.println(fileName + "  service called %%%%%%%%%%%%%%%%%%%%%%%%%%%%   "+body);
     	 
     	 try {
     		
             // Verify JWT
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
             	String token = authHeader.substring(7);
-            	//System.out.println(token);
-              //  Map claimsMap=  jwtUtil.verify(token);
-                //Map usermap = (Map)((Map)claimsMap.get("editorConfig")).get("user");
-                //fileName = (String)usermap.get("fileName");
-               
-               // System.out.println(users+"%%%%%%%%%%%%  file name "+fileName); 
-               
+           	               
             }
 
             int status = (Integer) body.get("status");
