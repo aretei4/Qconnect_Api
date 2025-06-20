@@ -33,9 +33,7 @@ public class CallbackController {
     public ResponseEntity<?> saveDocument(@RequestBody Map<String, Object> body,
                                           @RequestHeader(value = "Authorization", required = false) String authHeader,
                                           @RequestParam(name = "filename", required = false, defaultValue = "sample_v02.docx") String fileName) {
-       
-    //	String fileName = "sample_v02.docx";
-    	System.out.println(fileName + "  service called %%%%%%%%%%%%%%%%%%%%%%%%%%%%   "+body);
+    
     	 
     	 try {
     		
@@ -46,12 +44,9 @@ public class CallbackController {
             }
 
             int status = (Integer) body.get("status");
+        	System.out.println(status+" Inside save call back file name "+fileName);
             if (status == 2 || status == 6 || status == 7) { // 2 = ready for saving, 3 = corrupted
                 String downloadUri = (String) body.get("url");
-                String token = (String) body.get("token");
-                List<String> users = (List<String>) body.get("users");
-                System.out.println(token);
-                System.out.println(users+""+downloadUri);
                 Path path = Paths.get(System.getProperty("user.home"), "data", fileName);
                 System.out.println("  %%%%%%%%  "+path);
                 try (InputStream in = new URL(downloadUri).openStream()) {
@@ -65,7 +60,7 @@ public class CallbackController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.ok(Map.of("error", 0));
+            return ResponseEntity.ok(Map.of("error", 1));
         }
 
        

@@ -77,8 +77,9 @@ public class OnlyOfficeEdit {
 				 String token = jwtUtil.sign(jsonMap);
 				  System.out.println(token);
 				jsonMap.put("token", token);
-				jsonMap.put("lockedBy", "Subash Rout");
-				  return jsonMap;
+				//jsonMap.put("lockedBy", "Subash Rout");
+				 
+				return jsonMap;
 			}  catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
