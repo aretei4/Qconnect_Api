@@ -41,28 +41,26 @@ public class OnlyOfficeEdit {
 	    private String docServerUrl;
 	   
 	   
-	    String callbackUrl = "http://13.204.49.246:3050/save?filename=";
+	    
 			   
 	   @PostMapping("/onlyoffice/config")
 	   @ResponseBody
 	   public Map<String, Object> getOnlyOfficeConfig(@RequestBody Map<String, Object> body) {
+		   
+		   String callbackUrl = "http://13.204.49.246:3050/save?filename=";
+		   
 		   ObjectMapper mapper = new ObjectMapper();
-		  // File file = new File("src/main/resources/onlyoffice.json");
+		   
 		   InputStream inputStream = getClass().getClassLoader().getResourceAsStream("onlyoffice.json");
 
-		  // if (inputStream == null) {
-		    //   throw new FileNotFoundException("File not found: onlyoffice.json");
-		   //}
-
-		   // You can now read the InputStream
-
+		 
 	        try {
 	        	String fileUrl = (String) body.get("fileUrl");
 	        	String destFile = (String) body.get("destFile");
 	        	if(null !=destFile && destFile.isEmpty()) {
 	        		callbackUrl = callbackUrl+"sample_v03.docx";
 	        	}else {
-	        		callbackUrl = destFile;
+	        		callbackUrl = callbackUrl+destFile;
 	        	}
                 System.out.println(fileUrl);
 				Map<String, Object> jsonMap = mapper.readValue(inputStream, Map.class);
