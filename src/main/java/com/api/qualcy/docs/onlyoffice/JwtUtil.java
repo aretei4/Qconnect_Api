@@ -20,7 +20,7 @@ import io.jsonwebtoken.security.Keys;
 public class JwtUtil {
 
   //  @Value("${onlyoffice.jwt.secret}")
-    private  String secret= "fJ2lTiubmBQwXIrG9NfLFGEHbeQmwYsl";
+    private  String secret= "abq3EH95CcmsYqrz5voHdGJkxCRqm0fE";//"fJ2lTiubmBQwXIrG9NfLFGEHbeQmwYsl";
 
     public String sign(Map<String, Object> payload) {
     	// Set expiration time (e.g., 1 hour from now)
