@@ -9,20 +9,23 @@ async function openEditor() {
 async function sendData() {
 	const urlParams = new URLSearchParams(window.location.search);
   	const srcfile = urlParams.get('srcfile');
-  	const destfile = urlParams.get('destfile');
+  	var destfile = urlParams.get('destfile');
   	console.log('srcfile:', srcfile);
   	console.log('destfile:', destfile);
-  	var downladFile = destfile; 
+  	var downladFile = ""; 
   	if(srcfile == 'new'){
 		  downladFile = "new_template.docx";
 	  }else{
 		 downladFile =srcfile;
 	  }
 	  console.log('fileName:', downladFile);
-	  
+	  if(!destfile){
+		 destfile =""; 
+	  }
       const payload = {
 		 // fileUrl: "https://dbqualcy.s3.ap-south-1.amazonaws.com/sampledoc.docx",
-		  fileUrl: "http://13.204.49.246:3050/files/"+downladFile,		
+		  fileUrl: "http://13.204.49.246:3050/files/"+downladFile,	
+		 // fileUrl: "http://localhost:3050/files/"+downladFile,	
 		   destFile:destfile,
         user: {
         id: "Subash",

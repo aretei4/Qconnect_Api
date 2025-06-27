@@ -46,8 +46,21 @@ public class OnlyOfficeEdit {
 	   @PostMapping("/onlyoffice/config")
 	   @ResponseBody
 	   public Map<String, Object> getOnlyOfficeConfig(@RequestBody Map<String, Object> body) {
-		   
-		   String callbackUrl = "http://13.204.49.246:3050/save?filename=";
+		   boolean viewFlag  = false;//(boolean) body.get("edit");
+		   String destFile = (String) body.get("destFile");
+		   System.out.println("  Destination file "+destFile);
+		   if(null !=destFile && (destFile.isEmpty() || destFile.isBlank())) {
+			   return viewConfig(body);
+		   }else {
+			   return editConfig(body);
+		   }
+		  
+		  
+		}
+	   
+	  private Map<String, Object> editConfig(Map<String, Object> body) {
+		  
+		  String callbackUrl = "http://13.204.49.246:3050/save?filename=";
 		   
 		   ObjectMapper mapper = new ObjectMapper();
 		   
@@ -62,7 +75,7 @@ public class OnlyOfficeEdit {
 	        	}else {
 	        		callbackUrl = callbackUrl+destFile;
 	        	}
-                System.out.println(fileUrl);
+               System.out.println(fileUrl);
 				Map<String, Object> jsonMap = mapper.readValue(inputStream, Map.class);
 				 Map<String, Object> document = (Map<String, Object>)jsonMap.get("document");
 				 document.put("key", UUID.randomUUID().toString());
@@ -86,10 +99,41 @@ public class OnlyOfficeEdit {
 	       Map<String, Object> config = new HashMap<>();
 	   
 	       return config;
-	   }
+	  }
+
+ private Map<String, Object> viewConfig(Map<String, Object> body) {
+		  
+		   
+		   ObjectMapper mapper = new ObjectMapper();
+		   
+		   InputStream inputStream = getClass().getClassLoader().getResourceAsStream("onlyoffice_view.json");
+
+		 
+	        try {
+	        	String fileUrl = (String) body.get("fileUrl");
+	        	
+               System.out.println(fileUrl);
+				Map<String, Object> jsonMap = mapper.readValue(inputStream, Map.class);
+				 Map<String, Object> document = (Map<String, Object>)jsonMap.get("document");
+				 document.put("key", UUID.randomUUID().toString());
+				 document.put("url", fileUrl); 
+				 String token = jwtUtil.sign(jsonMap);
+				 System.out.println(token);
+				jsonMap.put("token", token);
+				//jsonMap.put("lockedBy", "Subash Rout");
+				 
+				return jsonMap;
+			}  catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	        
+	       Map<String, Object> config = new HashMap<>();
 	   
-	   
-		
+	       return config;
+	  }
+
+ 
 	// For file serving
     @GetMapping("/files/{filename:.+}")
     @ResponseBody
