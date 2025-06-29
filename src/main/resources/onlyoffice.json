@@ -1,4 +1,8 @@
 {
+"qualcy": {
+	 "errorMsg": "Item is blocked ",
+    "isBlock": false
+	},
   "document": {
     "fileType": "docx",
     "key": "1750072275924yn3vhg0ts9r",
@@ -19,27 +23,15 @@
   },
   "editorConfig": {
     "callbackUrl": "http://13.204.49.246:3050/save",
+     "mode": "edit",
     "user": {
       "id": "Subash",
-      "name": "Subash Rout",
-      "fileName": "sample_v01.docx"
-    },
-    "permissions": {
-      "edit": true,
-      "download": true,
-      "print": true
+      "name": "Subash Rout"
     },
     "customization": {
+     "trackChanges": true,	
       "about": true,
-      "anonymous": {
-        "request": true,
-        "label": "Guest"
-      },
-      "autosave": true,
-      "close": {
-        "visible": true,
-        "text": "Close file"
-      }
+      "autosave": true      
     }
   }  
 }

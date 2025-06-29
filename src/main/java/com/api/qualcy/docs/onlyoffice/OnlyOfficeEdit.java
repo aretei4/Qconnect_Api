@@ -1,16 +1,14 @@
 package com.api.qualcy.docs.onlyoffice;
 
-import java.io.File;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -18,29 +16,28 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.RestController;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.exc.StreamReadException;
-import com.fasterxml.jackson.databind.DatabindException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 
 @Controller
 public class OnlyOfficeEdit {
 	
+	 private static final Logger logger = LoggerFactory.getLogger(OnlyOfficeEdit.class);
+	
 	   @Autowired
 	    private JwtUtil jwtUtil;
 	   
-	   @Value("${onlyoffice.docserver.url}")
-	    private String docServerUrl;
+	   @Value("${onlyoffice.storage.path}")
+	    private String storagePath;
 	   
-	   
+	   @Value("${onlyoffice.callback.url}")
+	    private  String callbackUrl;
 	    
 			   
 	   @PostMapping("/onlyoffice/config")
@@ -48,7 +45,8 @@ public class OnlyOfficeEdit {
 	   public Map<String, Object> getOnlyOfficeConfig(@RequestBody Map<String, Object> body) {
 		   boolean viewFlag  = false;//(boolean) body.get("edit");
 		   String destFile = (String) body.get("destFile");
-		   System.out.println("  Destination file "+destFile);
+		   logger.info("  Storage path Is  "+storagePath);
+		   logger.info("  Destination file "+destFile);
 		   if(null !=destFile && (destFile.isEmpty() || destFile.isBlank())) {
 			   return viewConfig(body);
 		   }else {
@@ -60,7 +58,7 @@ public class OnlyOfficeEdit {
 	   
 	  private Map<String, Object> editConfig(Map<String, Object> body) {
 		  
-		  String callbackUrl = "http://13.204.49.246:3050/save?filename=";
+		 // String callbackUrl = "http://13.204.49.246:3050/save?filename=";
 		   
 		   ObjectMapper mapper = new ObjectMapper();
 		   
@@ -75,7 +73,7 @@ public class OnlyOfficeEdit {
 	        	}else {
 	        		callbackUrl = callbackUrl+destFile;
 	        	}
-               System.out.println(fileUrl);
+               logger.info(fileUrl);
 				Map<String, Object> jsonMap = mapper.readValue(inputStream, Map.class);
 				 Map<String, Object> document = (Map<String, Object>)jsonMap.get("document");
 				 document.put("key", UUID.randomUUID().toString());
@@ -86,13 +84,13 @@ public class OnlyOfficeEdit {
 				 editorConfig.put("callbackUrl", callbackUrl);
 				 jsonMap.put("editorConfig", editorConfig);
 				 String token = jwtUtil.sign(jsonMap);
-				  System.out.println(token);
+				  logger.info(token);
 				jsonMap.put("token", token);
 				//jsonMap.put("lockedBy", "Subash Rout");
 				 
 				return jsonMap;
 			}  catch (Exception e) {
-				// TODO Auto-generated catch block
+				 logger.error("  %%%%%%%%  "+e.getMessage());
 				e.printStackTrace();
 			}
 	        
@@ -112,19 +110,19 @@ public class OnlyOfficeEdit {
 	        try {
 	        	String fileUrl = (String) body.get("fileUrl");
 	        	
-               System.out.println(fileUrl);
+               logger.info(fileUrl);
 				Map<String, Object> jsonMap = mapper.readValue(inputStream, Map.class);
 				 Map<String, Object> document = (Map<String, Object>)jsonMap.get("document");
 				 document.put("key", UUID.randomUUID().toString());
 				 document.put("url", fileUrl); 
 				 String token = jwtUtil.sign(jsonMap);
-				 System.out.println(token);
+				 logger.info(token);
 				jsonMap.put("token", token);
 				//jsonMap.put("lockedBy", "Subash Rout");
 				 
 				return jsonMap;
 			}  catch (Exception e) {
-				// TODO Auto-generated catch block
+				 logger.error("  %%%%%%%%  "+e.getMessage());
 				e.printStackTrace();
 			}
 	        
@@ -137,13 +135,21 @@ public class OnlyOfficeEdit {
 	// For file serving
     @GetMapping("/files/{filename:.+}")
     @ResponseBody
-    public ResponseEntity<Resource> getFile(@PathVariable String filename) throws IOException {
+    public ResponseEntity<Resource> getFile(@PathVariable String filename) {
     	// Using Paths (modern)
-    	Path file = Paths.get(System.getProperty("user.home"), "data", filename);
+    	try {
+    		 logger.info("  Storage path Is  "+storagePath);
+    		 
+    	Path file = Paths.get(System.getProperty("user.home"), storagePath, filename);
         Resource resource = new UrlResource(file.toUri());
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                 .body(resource);
+    }  catch (Exception e) {
+		 logger.error("  %%%%%%%%  "+e.getMessage());
+		 return ResponseEntity.status(503).body(null);
+		//e.printStackTrace();
+	}
     }
 
 }

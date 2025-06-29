@@ -4,15 +4,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.stereotype.Component;
 
 import io.github.cdimascio.dotenv.Dotenv;
 import jakarta.annotation.PostConstruct;
 
-//@Configuration
-//@ComponentScan(basePackages = "com.api.qualcy.docs")
+@Component
 public class AppConfig {
     
-    @Value("${user.home}")
+    @Value("${server.port}")
     private String homeDirectory;
     
     @Bean
@@ -20,14 +20,9 @@ public class AppConfig {
         return homeDirectory;
     }
     
-    @PostConstruct
-    public void loadEnv() {
-        Dotenv dotenv = Dotenv.configure().load();
-        
-        // Set as system properties (optional)
-        dotenv.entries().forEach(entry -> 
-            System.setProperty(entry.getKey(), entry.getValue())
-        );
+    public void printInfo() {
+        System.out.println("App Name: " + homeDirectory);
+      //  System.out.println("Version: " + version);
     }
     // Usage example
     @Bean

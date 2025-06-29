@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class QualcyApplication {
 
 	public static void main(String[] args) {
+		
 		SpringApplication.run(QualcyApplication.class, args);
 	}
 

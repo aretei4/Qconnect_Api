@@ -35,7 +35,7 @@ async function sendData() {
       };
 
       try {
-        const response = await fetch('http://13.204.49.246:3050/onlyoffice/config', {
+        const response = await fetch('http://localhost:3050/onlyoffice/config', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -47,6 +47,8 @@ async function sendData() {
         
         const result = await response.json();
         console.log('Server response:', result);
+        alert(" Message from server "+result.qualcy.errorMsg);
+        
 		 new DocsAPI.DocEditor("onlyoffice-editor", result);
       } catch (error) {
         console.error('Error:', error);

@@ -1,0 +1,12 @@
+estricting Track Changes to Specific Users
+If you want to show the document in review mode (where only track changes are allowed):
+
+json
+Copy
+Edit
+"permissions": {
+  "edit": true,
+  "review": true,  // allow track changes
+  "comment": false,
+  "fillForms": false
+}
