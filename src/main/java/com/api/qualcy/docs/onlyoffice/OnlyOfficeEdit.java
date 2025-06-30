@@ -37,7 +37,7 @@ public class OnlyOfficeEdit {
 	    private String storagePath;
 	   
 	   @Value("${onlyoffice.callback.url}")
-	    private  String callbackUrl;
+	    private  String baseCallbackUrl;
 	    
 			   
 	   @PostMapping("/onlyoffice/config")
@@ -58,11 +58,11 @@ public class OnlyOfficeEdit {
 	   
 	  private Map<String, Object> editConfig(Map<String, Object> body) {
 		  
-		 // String callbackUrl = "http://13.204.49.246:3050/save?filename=";
+		  String callbackUrl = baseCallbackUrl;
 		   
 		   ObjectMapper mapper = new ObjectMapper();
-		   
-		   InputStream inputStream = getClass().getClassLoader().getResourceAsStream("onlyoffice.json");
+		   String fileName ="sample.json"; //"onlyoffice.json";
+		   InputStream inputStream = getClass().getClassLoader().getResourceAsStream(fileName);
 
 		 
 	        try {
@@ -85,7 +85,11 @@ public class OnlyOfficeEdit {
 				 jsonMap.put("editorConfig", editorConfig);
 				 String token = jwtUtil.sign(jsonMap);
 				  logger.info(token);
-				jsonMap.put("token", token);
+				  jsonMap.put("token", token);
+				  Map<String, Object> qualcy = new HashMap<String, Object>(); 
+				  qualcy.put("errorMsg", "Item is blocked ");
+				  qualcy.put("isBlock", false);
+				  jsonMap.put("qualcy", qualcy);
 				//jsonMap.put("lockedBy", "Subash Rout");
 				 
 				return jsonMap;

@@ -1,9 +1,10 @@
 package com.api.qualcy.docs.onlyoffice;
 
-import org.springframework.stereotype.Component;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Component
+import org.springframework.stereotype.Service;
+
+@Service
 public class DocumentLockService {
     private final ConcurrentHashMap<String, String> documentLocks = new ConcurrentHashMap<>();
 
@@ -13,16 +14,17 @@ public class DocumentLockService {
 
     public void unlock(String documentId, String userId) {
         documentLocks.computeIfPresent(documentId, (key, currentUserId) -> {
-            if (currentUserId.equals(userId)) {
-                return null;
-            }
-            return currentUserId;
+          //  if (currentUserId.equals(userId)) {
+            //    return null;
+            //}
+            return null;
         });
     }
 
     public boolean isLockedByAnotherUser(String documentId, String userId) {
         String currentUser = documentLocks.get(documentId);
-        return currentUser != null && !currentUser.equals(userId);
+        System.out.println(documentId+"  locket "+currentUser +"    "+userId);
+        return currentUser != null;
     }
 
     public String getLockedUser(String documentId) {

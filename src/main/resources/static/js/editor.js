@@ -47,7 +47,11 @@ async function sendData() {
         
         const result = await response.json();
         console.log('Server response:', result);
-        alert(" Message from server "+result.qualcy.errorMsg);
+       typeof myVar === 'undefined'
+        if(!(typeof result.qualcy.errorMsg === 'undefined')){
+			 alert(" Message from server "+result.qualcy.errorMsg);
+		}
+       
         
 		 new DocsAPI.DocEditor("onlyoffice-editor", result);
       } catch (error) {

@@ -64,7 +64,7 @@ public class CallbackController {
 
         } catch (Exception e) {
         	 logger.error("  %%%%%%%%  "+e.getMessage());
-            e.printStackTrace();
+           // e.printStackTrace();
             return ResponseEntity.ok(Map.of("error", 1));
         }
 
