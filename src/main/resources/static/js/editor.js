@@ -24,7 +24,7 @@ async function sendData() {
 	  }
       const payload = {
 		 // fileUrl: "https://dbqualcy.s3.ap-south-1.amazonaws.com/sampledoc.docx",
-		  fileUrl: "http://13.204.49.246:3050/files/"+downladFile,	
+		  fileUrl: downladFile,	
 		 // fileUrl: "http://localhost:3050/files/"+downladFile,	
 		   destFile:destfile,
         user: {
@@ -47,12 +47,9 @@ async function sendData() {
         
         const result = await response.json();
         console.log('Server response:', result);
-       typeof myVar === 'undefined'
-        if(!(typeof result.qualcy.errorMsg === 'undefined')){
-			 alert(" Message from server "+result.qualcy.errorMsg);
-		}
-       
-        
+       if(result.qualcy){
+       	 alert(result.qualcy.errorMsg);
+		} 
 		 new DocsAPI.DocEditor("onlyoffice-editor", result);
       } catch (error) {
         console.error('Error:', error);

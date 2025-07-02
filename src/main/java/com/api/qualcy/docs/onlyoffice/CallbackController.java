@@ -31,25 +31,31 @@ public class CallbackController {
 	 
 	   @Value("${onlyoffice.storage.path}")
 	    private String storagePath;
-
+	   @Autowired
+		private DocumentLockService lockService;
+	   
     @CrossOrigin(origins = "*")
     @PostMapping("/save")
     public ResponseEntity<?> saveDocument(@RequestBody Map<String, Object> body,
                                           @RequestHeader(value = "Authorization", required = false) String authHeader,
-                                          @RequestParam(name = "filename", required = false, defaultValue = "sample_v02.docx") String fileName) {
-    
+                                          @RequestParam(name = "filename", required = false, defaultValue = "sample_v02.docx") String fileName, 
+    									@RequestParam(name = "srcFile", required = false, defaultValue = "sample_v01.docx") String srcFile){
     	 
     	 try {
-    		
+    			//logger.info(status+" Inside save call back file name "+fileName+ " Source file "+srcFile);
             // Verify JWT
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
             	String token = authHeader.substring(7);
-           	               
+            	logger.info( " Token is  "+token);    
             }
 
             int status = (Integer) body.get("status");
-        	logger.info(status+" Inside save call back file name "+fileName);
-            if (status == 2 || status == 6 || status == 7) { // 2 = ready for saving, 3 = corrupted
+        	logger.info(status+" Inside save call back file name "+fileName+ " Source file "+srcFile);
+            if(status > 2) {
+            	lockService.unlock(srcFile, "Subash Rout");
+            }
+        
+            if (status == 2 || status == 3 || status == 6 || status == 7) { // 2 = ready for saving, 3 = corrupted
                 String downloadUri = (String) body.get("url");
                 Path path = Paths.get(System.getProperty("user.home"), storagePath, fileName);
                 logger.info("  %%%%%%%%  "+path);

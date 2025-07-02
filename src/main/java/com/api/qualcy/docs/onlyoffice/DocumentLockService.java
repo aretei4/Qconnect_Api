@@ -2,10 +2,15 @@ package com.api.qualcy.docs.onlyoffice;
 
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class DocumentLockService {
+	
+	private static final Logger logger = LoggerFactory.getLogger(DocumentLockService.class);
+	
     private final ConcurrentHashMap<String, String> documentLocks = new ConcurrentHashMap<>();
 
     public boolean tryLock(String documentId, String userId) {
@@ -13,12 +18,12 @@ public class DocumentLockService {
     }
 
     public void unlock(String documentId, String userId) {
-        documentLocks.computeIfPresent(documentId, (key, currentUserId) -> {
-          //  if (currentUserId.equals(userId)) {
-            //    return null;
-            //}
-            return null;
-        });
+    	//logger.info(" Trying to  document id "+documentId + "  By User  "+userId);
+    	//documentLocks.
+    	if(documentLocks.containsKey(documentId)) {
+    		logger.info(" Unlock document id "+documentId + "  By User  "+userId);
+    		documentLocks.remove(documentId);
+    	}
     }
 
     public boolean isLockedByAnotherUser(String documentId, String userId) {
