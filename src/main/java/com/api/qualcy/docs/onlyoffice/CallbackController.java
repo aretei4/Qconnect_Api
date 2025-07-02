@@ -51,7 +51,7 @@ public class CallbackController {
 
             int status = (Integer) body.get("status");
         	logger.info(status+" Inside save call back file name "+fileName+ " Source file "+srcFile);
-            if(status > 1) {
+            if(status == 2 || status == 4) {
             	lockService.unlock(srcFile, "Subash Rout");
             }
         
