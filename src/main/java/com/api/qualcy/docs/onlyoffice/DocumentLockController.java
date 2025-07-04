@@ -1,6 +1,8 @@
 package com.api.qualcy.docs.onlyoffice;
 
 import java.security.Principal;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +43,19 @@ public class DocumentLockController {
 	       documentLockService.unlock(docId, userId);
 	       return ResponseEntity.ok("Unlocked successfully");
 	   }
+	   
+	   @GetMapping("/isDocOpened")
+	   public ResponseEntity<?> isDocOpened(@RequestParam String docId) {
+		   Map<String, Object> lockUser =new HashMap<String,Object>() ;
+		   lockUser.put("isEdit",false );			
+	       String usrName = documentLockService.getLockedUser(docId);
+	       if(null !=usrName && !(usrName.isEmpty())) {
+	    	   lockUser.put("isEdit",true );   
+	    	   lockUser.put("name",usrName );  
+	       }
+	       return ResponseEntity.ok(lockUser);
+	   }
+	   
 
 	   
 }

@@ -18,8 +18,7 @@ public class DocumentLockService {
     }
 
     public void unlock(String documentId, String userId) {
-    	//logger.info(" Trying to  document id "+documentId + "  By User  "+userId);
-    	//documentLocks.
+    	
     	if(documentLocks.containsKey(documentId)) {
     		logger.info(" Unlock document id "+documentId + "  By User  "+userId);
     		documentLocks.remove(documentId);

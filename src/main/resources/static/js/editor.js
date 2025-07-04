@@ -10,6 +10,7 @@ async function sendData() {
 	const urlParams = new URLSearchParams(window.location.search);
   	const srcfile = urlParams.get('srcfile');
   	var destfile = urlParams.get('destfile');
+  		var token = urlParams.get('token');
   	console.log('srcfile:', srcfile);
   	console.log('destfile:', destfile);
   	var downladFile = ""; 
@@ -22,11 +23,13 @@ async function sendData() {
 	  if(!destfile){
 		 destfile =""; 
 	  }
+	   if(!token){
+		 token =""; 
+	  }
       const payload = {
-		 // fileUrl: "https://dbqualcy.s3.ap-south-1.amazonaws.com/sampledoc.docx",
-		  fileUrl: downladFile,	
-		 // fileUrl: "http://localhost:3050/files/"+downladFile,	
+		   fileUrl: downladFile,	
 		   destFile:destfile,
+		   token:token,
         user: {
         id: "Subash",
         name: "Subash Rout",

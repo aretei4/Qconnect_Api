@@ -7,11 +7,7 @@
   },
  "editorConfig": {
     "mode": "view",
-    "lang": "en",
-    "user": {
-      "id": "user1",
-      "name": "Viewer"
-    }
+    "lang": "en"  
   },
   "permissions": {
     "edit": false,
