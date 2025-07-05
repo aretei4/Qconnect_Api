@@ -44,7 +44,7 @@ public class DocumentLockController {
 	       return ResponseEntity.ok("Unlocked successfully");
 	   }
 	   
-	   @GetMapping("/isDocOpened")
+	   @GetMapping("/doc-status")
 	   public ResponseEntity<?> isDocOpened(@RequestParam String docId) {
 		   Map<String, Object> lockUser =new HashMap<String,Object>() ;
 		   lockUser.put("isEdit",false );			

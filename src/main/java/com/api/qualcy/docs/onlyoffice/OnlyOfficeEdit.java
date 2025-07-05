@@ -47,7 +47,7 @@ public class OnlyOfficeEdit {
 	@Autowired
 	private DocumentLockService lockService;
 
-	private String userName = "";
+	private String userName = "Qualcy Admin";
 
 	@PostMapping("/onlyoffice/config")
 	@ResponseBody
@@ -57,6 +57,7 @@ public class OnlyOfficeEdit {
 		String destFile = (String) body.get("destFile");
 		logger.info("  Storage path Is  " + storagePath);
 		logger.info("  Destination file " + destFile);
+		Map<String, Object> user = getUserInfo(body);
 		if (null != destFile && (destFile.isEmpty() || destFile.isBlank())) {
 			return viewConfig(body);
 		} else {
@@ -75,9 +76,11 @@ public class OnlyOfficeEdit {
 		String inToken = (String) body.get("token");
 		Map<String, Object> claimsMap = null;
 		if (null == inToken || inToken.isEmpty()) {
+			userName="Subash Rout";
 			claimsMap = new HashMap<String, Object>();
-			claimsMap.put("name", "Subash");
+			claimsMap.put("name",userName);
 			claimsMap.put("id", "2345");
+			
 		} else {
 			claimsMap = jwtUtil.verify(inToken);
 			userName = (String) claimsMap.get("name");
