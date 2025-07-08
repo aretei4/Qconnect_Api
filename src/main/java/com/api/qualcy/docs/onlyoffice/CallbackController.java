@@ -6,7 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -20,8 +20,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.api.qualcy.docs.security.AppConfig;
 
 @RestController
 public class CallbackController {
@@ -44,6 +42,9 @@ public class CallbackController {
     	 try {
     			//logger.info(status+" Inside save call back file name "+fileName+ " Source file "+srcFile);
             // Verify JWT
+    		 Map<String,Object> sucess =new  HashMap<String,Object>();
+    		 sucess.put("error", 0);
+        	 
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
             	String token = authHeader.substring(7);
             	logger.info( " Token is  "+token);    
@@ -63,15 +64,17 @@ public class CallbackController {
                     Files.copy(in, path, StandardCopyOption.REPLACE_EXISTING);
                 }
 
-                return ResponseEntity.ok(Map.of("error", 0));
+                return ResponseEntity.ok(sucess);
             }else {
-            	 return ResponseEntity.ok(Map.of("error", 0));
+            	 return ResponseEntity.ok(sucess);
             }
 
         } catch (Exception e) {
         	 logger.error("  %%%%%%%%  "+e.getMessage());
            // e.printStackTrace();
-            return ResponseEntity.ok(Map.of("error", 1));
+        	 Map<String,Object> error =new  HashMap<String,Object>();
+        	 error.put("error", 1);
+            return ResponseEntity.ok(error);
         }
 
        

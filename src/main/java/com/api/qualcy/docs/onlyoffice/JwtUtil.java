@@ -1,19 +1,13 @@
 package com.api.qualcy.docs.onlyoffice;
 
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
-
-import javax.crypto.SecretKey;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoder;
 import io.jsonwebtoken.security.Keys;
 
 @Component

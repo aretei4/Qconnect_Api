@@ -58,7 +58,7 @@ public class OnlyOfficeEdit {
 		logger.info("  Storage path Is  " + storagePath);
 		logger.info("  Destination file " + destFile);
 		Map<String, Object> user = getUserInfo(body);
-		if (null != destFile && (destFile.isEmpty() || destFile.isBlank())) {
+		if (null != destFile && (destFile.isEmpty())) {
 			return viewConfig(body);
 		} else {
 			Map<String, Object> qualcy = lockUser(downloadName);

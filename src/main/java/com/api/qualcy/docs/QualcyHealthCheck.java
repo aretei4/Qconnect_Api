@@ -26,11 +26,7 @@ public class QualcyHealthCheck {
 	@GetMapping("/token")
 	public String welccome(@RequestParam String userName, String userId, String roleId) {
 	//	AppConfig.
-	    Map<String, Object> permissions = Map.of(
-	            "name", userName,
-	            "id",userId,
-	            "role", roleId
-	        );
+	    Map<String, Object> permissions =null;
 		  
 		String token = jwtUtil.sign(permissions);
 		logger.info(token);
