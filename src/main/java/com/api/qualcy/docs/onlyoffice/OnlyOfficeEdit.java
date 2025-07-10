@@ -159,7 +159,6 @@ public class OnlyOfficeEdit {
 
 		try {
 			String fileUrl = downLoadUrl + (String) body.get("fileUrl");
-
 			logger.info(fileUrl);
 			Map<String, Object> jsonMap = mapper.readValue(inputStream, Map.class);
 			Map<String, Object> document = (Map<String, Object>) jsonMap.get("document");
@@ -167,8 +166,7 @@ public class OnlyOfficeEdit {
 			document.put("url", fileUrl);
 			Map<String, Object> editorConfig = (Map<String, Object>) jsonMap.get("editorConfig");
 			editorConfig.put("user", user);
-			jsonMap.put("editorConfig", editorConfig);
-			
+			jsonMap.put("editorConfig", editorConfig);			
 			String token = jwtUtil.sign(jsonMap);
 			logger.info(token);
 			jsonMap.put("token", token);

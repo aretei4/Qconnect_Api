@@ -13,6 +13,7 @@
 	<artifactId>qualcy</artifactId>
 	<version>1.0</version>
 	<name>qualcy</name>
+	<packaging>war</packaging>
 	<description>Api for onlyoffice docs</description>
 	<url />
 	<licenses>
@@ -97,6 +98,11 @@
 			<artifactId>jjwt-jackson</artifactId>
 			<version>0.11.5</version>
 			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-tomcat</artifactId>
+			<scope>provided</scope>
 		</dependency>
 
 	</dependencies>
