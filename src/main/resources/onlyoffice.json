@@ -23,7 +23,7 @@
   },
   "editorConfig": {
     "callbackUrl": "http://13.204.49.246:3050/save",
-     "mode": "edit",
+     "mode": "view",
     "user": {
       "id": "Subash",
       "name": "Subash Rout"
