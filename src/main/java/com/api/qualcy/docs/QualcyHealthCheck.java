@@ -26,7 +26,8 @@ public class QualcyHealthCheck {
 
 	@GetMapping("/hello")
 	public String hello() {
-		return "Hello World";
+		String ctx = ContextPathStore.getContextPath();
+		return ctx+" ************** Hello World";
 	}
 
 	@GetMapping("/token")

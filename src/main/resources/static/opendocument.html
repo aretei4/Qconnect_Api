@@ -1,0 +1,59 @@
+ <script type="text/javascript" src="http://15.207.0.96/web-apps/apps/api/documents/api.js"></script>
+ <script type="text/javascript">
+ async function sendData() {
+		const urlParams = new URLSearchParams(window.location.search);
+	  	const srcfile = urlParams.get('srcfile');
+	  	var destfile = urlParams.get('destfile');
+	  		var token = urlParams.get('token');
+	  	console.log('srcfile:', srcfile);
+	  	console.log('destfile:', destfile);
+	  	var downladFile = ""; 
+	  	if(srcfile == 'new'){
+			  downladFile = "new_template.docx";
+		  }else{
+			 downladFile =srcfile;
+		  }
+		  console.log('fileName:', downladFile);
+		  if(!destfile){
+			 destfile =""; 
+		  }
+		   if(!token){
+			 token =""; 
+		  }
+	      const payload = {
+			   fileUrl: downladFile,	
+			   destFile:destfile,
+			   token:token,
+	        user: {
+	        id: "Subash",
+	        name: "Subash Rout",
+	       // fileName: destfile,
+	      }
+	      };
+
+	      try {
+	        const response = await fetch('onlyoffice/config', {
+	          method: 'POST',
+	          headers: {
+	            'Content-Type': 'application/json'
+	          },
+	          body: JSON.stringify(payload)
+	        });
+
+	        if (!response.ok) throw new Error('Network response was not ok');
+	        
+	        const result = await response.json();
+	        console.log('Server response:', result);
+	       if(result.qualcy){
+	       	 alert(result.qualcy.errorMsg);
+			} 
+			 new DocsAPI.DocEditor("onlyoffice-editor", result);
+	      } catch (error) {
+	        console.error('Error:', error);
+	      }
+	    } 
+ </script>
+ <body onload="sendData()">
+ 	<div id="onlyoffice-editor"></div>
+</body>
+  
