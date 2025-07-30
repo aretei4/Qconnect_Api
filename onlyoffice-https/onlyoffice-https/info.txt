@@ -1,0 +1,4 @@
+docker-compose up -d onlyoffice-document-server nginx
+docker-compose run --rm certbot
+docker exec onlyoffice-nginx nginx -s reload
+https://chatgpt.com/c/68879023-5304-800f-94e3-e4cad413cbc7
