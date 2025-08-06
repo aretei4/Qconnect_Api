@@ -1,18 +1,6 @@
 version: '3'
 
 services:
-  onlyoffice-document-server:
-    image: onlyoffice/documentserver
-    container_name: onlyoffice-document-server
-    restart: always
-    expose:
-      - "80"
-    environment:
-      - JWT_SECRET=abq3EH95CcmsYqrz5voHdGJkxCRqm0fE
-      - JWT_HEADER=Authorization
-      - JWT_ENABLED=true
-      - ENABLE_WEBSOCKETS=false
-
   nginx:
     image: nginx:alpine
     container_name: onlyoffice-nginx
