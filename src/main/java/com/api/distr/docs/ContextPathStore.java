@@ -1,4 +1,4 @@
-package com.api.qualcy.docs;
+package com.api.distr.docs;
 
 import org.springframework.boot.web.servlet.context.ServletWebServerInitializedEvent;
 import org.springframework.context.ApplicationListener;

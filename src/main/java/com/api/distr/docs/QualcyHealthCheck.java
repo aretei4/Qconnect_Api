@@ -1,4 +1,4 @@
-package com.api.qualcy.docs;
+package com.api.distr.docs;
 
 import java.util.Map;
 
@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.api.qualcy.docs.onlyoffice.JwtUtil;
+import com.api.distr.docs.jwt.JwtUtil;
 
 @RestController
 @RequestMapping("/api")

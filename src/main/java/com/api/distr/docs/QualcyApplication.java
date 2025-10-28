@@ -1,9 +1,9 @@
-package com.api.qualcy.docs;
+package com.api.distr.docs;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-//@SpringBootApplication
+@SpringBootApplication
 public class QualcyApplication {
 
 	public static void main(String[] args) {

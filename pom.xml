@@ -10,11 +10,11 @@
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.api</groupId>
-	<artifactId>docsmanager</artifactId>
+	<artifactId>distr</artifactId>
 	<version>1.0</version>
-	<name>qualcy</name>
+	<name>distr</name>
 	<packaging>war</packaging>
-	<description>Api for onlyoffice docs</description>
+	<description>Api for distr</description>
 	<url />
 	<licenses>
 		<license />
@@ -104,7 +104,31 @@
 			<artifactId>spring-boot-starter-tomcat</artifactId>
 			<scope>provided</scope>
 		</dependency>
-
+<dependency>
+        <groupId>org.apache.poi</groupId>
+        <artifactId>poi</artifactId>
+        <version>5.2.5</version>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.poi</groupId>
+        <artifactId>poi-ooxml</artifactId>
+        <version>5.2.5</version>
+    </dependency>
+      <dependency>
+        <groupId>org.json</groupId>
+        <artifactId>json</artifactId>
+        <version>20240303</version>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.poi</groupId>
+        <artifactId>poi-ooxml</artifactId>
+        <version>5.2.5</version>
+    </dependency>
+    <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <version>42.7.3</version>
+    </dependency>
 	</dependencies>
 
 	 <build>
@@ -121,7 +145,7 @@
                 </executions>
             </plugin>
         </plugins>
-        <finalName>docsmanager</finalName>
+        <finalName>distr</finalName>
     </build>
 
 </project>

@@ -1,4 +1,4 @@
-package com.api.qualcy.docs;
+package com.api.distr.docs;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -7,8 +7,8 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 
-import com.api.qualcy.docs.onlyoffice.JwtUtil;
-import com.api.qualcy.docs.security.AppConfig;
+import com.api.distr.docs.jwt.JwtUtil;
+import com.api.distr.docs.security.AppConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class TestSample {

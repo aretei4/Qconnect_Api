@@ -1,4 +1,4 @@
-package com.api.qualcy.docs.security;
+package com.api.distr.docs.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

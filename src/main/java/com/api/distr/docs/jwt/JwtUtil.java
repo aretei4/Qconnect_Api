@@ -1,4 +1,4 @@
-package com.api.qualcy.docs.onlyoffice;
+package com.api.distr.docs.jwt;
 
 import java.util.Date;
 import java.util.Map;
