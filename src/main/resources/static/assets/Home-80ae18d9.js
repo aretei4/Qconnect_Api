@@ -1,1 +1,0 @@
-import{j as e}from"./index-0fc9e9e6.js";const s=()=>e.jsxs("div",{children:[e.jsx("h1",{className:"text-2xl font-bold mb-4",children:"Welcome to My React App"}),e.jsx("p",{children:"This is the home page (TypeScript + Vite)."})]});export{s as default};

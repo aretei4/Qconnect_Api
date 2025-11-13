@@ -1,1 +1,0 @@
-import{j as o}from"./index-0fc9e9e6.js";const s=()=>o.jsxs("div",{children:[o.jsx("h1",{className:"text-2xl font-bold mb-4",children:"About"}),o.jsx("p",{children:"This is a production-ready React + TS app deployed via Spring Boot."})]});export{s as default};

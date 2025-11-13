@@ -1,4 +1,4 @@
-package com.api.qualcy.docs;
+package com.api.distr.docs;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

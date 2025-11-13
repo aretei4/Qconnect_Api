@@ -6,13 +6,21 @@ public interface DistrConstants {
 	
 	static final List<String> REQUIRED_HEADERS = List.of("Name", "Score", "Department");
 	static final String DATE_FORMAT = "DD/mm/yyyy";
-	static final String STAGE_SELECT_COUNT = "SELECT COUNT(*) FROM Stage_Sales_Entery WHERE \"Picklist_No\" = ?";
-	static final String STAGE_INSERT = "INSERT INTO Stage_Sales_Entery (\"Picklist_No\", \"Sales_Order_no\", \"Customer_no\", \"Cust_desc\", " +
-										"\"Sales_rep_no\", \"Sales_Rep_Name\", \"Route\", \"Route_Name\", \"Billing_Date\", \"Warehouse\", \"Net_Value\", \"Update_Date\", \"Bu_id\") " +
-										"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_DATE, 100)";
-	static final String STAGE_UPDATE = "UPDATE Stage_Sales_Entery SET \"Sales_Order_no\" = ?, \"Customer_no\" = ?, \"Cust_desc\" = ?, " +
-										"\"Sales_rep_no\" = ?, \"Sales_Rep_Name\" = ?, \"Route\" = ?, \"Route_Name\" = ?, " +
-										"\"Billing_Date\" = ?, \"Warehouse\" = ?, \"Net_Value\" = ?, \"Update_Date\" = CURRENT_DATE " +
-										"WHERE \"Picklist_No\" = ?";
+	static final String STAGE_SELECT_COUNT = 
+		    "SELECT COUNT(*) FROM stage_sales_entery WHERE picklist_no = ?";
+
+		static final String STAGE_INSERT = 
+		    "INSERT INTO stage_sales_entery (" +
+		    "picklist_no, sales_order_no, customer_no, cust_desc, " +
+		    "sales_rep_no, sales_rep_name, route, route_name, billing_date, warehouse, net_value, update_date, bu_id" +
+		    ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_DATE, 100)";
+
+		static final String STAGE_UPDATE = 
+		    "UPDATE stage_sales_entery SET " +
+		    "sales_order_no = ?, customer_no = ?, cust_desc = ?, " +
+		    "sales_rep_no = ?, sales_rep_name = ?, route = ?, route_name = ?, " +
+		    "billing_date = ?, warehouse = ?, net_value = ?, update_date = CURRENT_DATE " +
+		    "WHERE picklist_no = ?";
+
 
 }

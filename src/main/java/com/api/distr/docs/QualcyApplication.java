@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class QualcyApplication {
 
 	public static void main(String[] args) {
-		
+		 System.setProperty("user.timezone", "Asia/Kolkata");
 		SpringApplication.run(QualcyApplication.class, args);
 	}
 
