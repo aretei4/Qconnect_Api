@@ -28,7 +28,7 @@ public class SalesEntryRepository {
 
     public List<SalesEntry> findByFilters(Map<String, String> filters) {
         // Build dynamic SQL
-        StringBuilder sql = new StringBuilder("SELECT * FROM stage_sales_entery WHERE 1=1");
+        StringBuilder sql = new StringBuilder(QueryConstants.SELECT_SALES);
         List<Object> params = new ArrayList<>();
 
         for (Map.Entry<String, String> entry : filters.entrySet()) {

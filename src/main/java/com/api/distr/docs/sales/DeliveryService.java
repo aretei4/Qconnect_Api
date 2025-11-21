@@ -32,9 +32,17 @@ public class DeliveryService {
     public List<DeliveryAgent> getAllAgents() {
         return deliveryRepository.findAll();
     }
+    public int deleteByPicklistNo(String picklistNo) {
+    	return deliveryRepository.deleteByPicklistNo(picklistNo);
+    }
     
     public List<SalesEntry> getDeliveryList(Map<String, String> filters) {
-        return deliveryRepository.getAllSales();
+    	String value = "";
+    	   for (Map.Entry<String, String> entry : filters.entrySet()) {
+               String column = entry.getKey().toLowerCase();
+               value = entry.getValue();              
+           }
+        return deliveryRepository.getAllSales(value);
     }
     
 }

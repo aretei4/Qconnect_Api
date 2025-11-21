@@ -4,12 +4,12 @@ package com.api.distr.docs.sales.dto;
 import java.util.List;
 
 public class DeliveryRequest {
-    private int deliveryBoyId;
+    private String deliveryBoyId;
     private List<String> picklistNos;
     private CarInfo car;
 
-    public int getDeliveryBoyId() { return deliveryBoyId; }
-    public void setDeliveryBoyId(int deliveryBoyId) { this.deliveryBoyId = deliveryBoyId; }
+    public String getDeliveryBoyId() { return deliveryBoyId; }
+    public void setDeliveryBoyId(String deliveryBoyId) { this.deliveryBoyId = deliveryBoyId; }
 
     public List<String> getPicklistNos() { return picklistNos; }
     public void setPicklistNos(List<String> picklistNos) { this.picklistNos = picklistNos; }

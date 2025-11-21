@@ -24,7 +24,8 @@ public class ExcelToSalesTable {
         try (Connection conn = DriverManager.getConnection(jdbcUrl, username, password)) {
             conn.setAutoCommit(false);
 
-            try (FileInputStream fis = new FileInputStream(excelFilePath);
+            try (
+            		FileInputStream fis = new FileInputStream(excelFilePath);
                  Workbook workbook = new XSSFWorkbook(fis)) {
 
                 Sheet sheet = workbook.getSheetAt(0);

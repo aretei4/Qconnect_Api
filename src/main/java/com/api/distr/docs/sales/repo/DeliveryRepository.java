@@ -108,26 +108,14 @@ public class DeliveryRepository {
         return jdbcTemplate.query(sql, new DeliveryMapper());
     }
     
-  
-    public List<SalesEntry> getAllSales() {
-        String sql = """
-            SELECT 
-                picklist_no AS picklistNo,
-                sales_order_no AS salesOrderNo,
-                customer_no AS customerNo,
-                cust_desc AS custDesc,
-                sales_rep_no AS salesRepNo,
-                sales_rep_name AS salesRepName,
-                route,
-                route_name AS routeName,
-                billing_date AS billingDate,
-                warehouse,
-                net_value AS netValue,
-                update_date AS updateDate,
-                bu_id AS buId
-            FROM stage_sales_entery
-            ORDER BY update_date DESC
-        """;
+    public int deleteByPicklistNo(String picklistNo) {
+        String sql = QueryConstants.DELETE_DELIVERY_ASSIGN;
+        return jdbcTemplate.update(sql, picklistNo);
+    }
+    
+    public List<SalesEntry> getAllSales(String deliveryId) {
+    	String sql=QueryConstants.SELECT_DELIVERY_ASSIGN+deliveryId+"') ORDER BY update_date DESC";
+    	System.out.println("**************** "+sql);			
         return jdbcTemplate.query(sql, new BeanPropertyRowMapper<>(SalesEntry.class));
     }
 }
