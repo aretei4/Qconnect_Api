@@ -60,6 +60,10 @@ public class ExcelUploadController {
         ));
     }
 
+    @GetMapping("/customerList")
+    public ResponseEntity<?> getAllCustomers() {
+        return ResponseEntity.ok(service.getAllCustomers());
+    }
     
     @PostMapping("/saveCustomer")
     public ResponseEntity<?> saveCustomer(@RequestBody CustomerDTO dto) {

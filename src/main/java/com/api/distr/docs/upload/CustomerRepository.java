@@ -1,7 +1,9 @@
 package com.api.distr.docs.upload;
 
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Types;
+import java.util.List;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -20,8 +22,37 @@ public class CustomerRepository {
     	custDto.setCustNo(dto.getCustomerNo());
     	saveOrUpdate(custDto);
     }
+    private Double getNullableDouble(ResultSet rs, String column) throws SQLException {
+        String value = rs.getString(column);
+        return (value == null || value.isBlank()) ? 0.00 : Double.parseDouble(value);
+    }
     
-    
+    public List<CustomerDTO> findAll() {
+
+        String sql = """
+            SELECT cust_id, cust_no, cust_desc, cust_mobile,
+                   TO_CHAR(updated_date, 'DD/MM/YYYY') AS updated_date,
+                   bu_id, lat, lon, address, pin
+            FROM customer_details
+            ORDER BY updated_date DESC
+        """;
+
+        return jdbc.query(sql, (rs, rowNum) -> {
+            CustomerDTO dto = new CustomerDTO();
+          //  dto.setCustId(rs.getLong("cust_id"));
+            dto.setCustNo(rs.getString("cust_no"));
+            dto.setCustDesc(rs.getString("cust_desc"));
+            dto.setCustMobile(rs.getString("cust_mobile"));
+            //dto.setUpdatedDate(rs.getString("updated_date"));
+            //dto.setBuId(rs.getInt("bu_id"));
+            dto.setLat(getNullableDouble(rs, "lat"));
+            dto.setLon(getNullableDouble(rs, "lon"));
+       
+            dto.setAddress(rs.getString("address"));
+            dto.setPin(rs.getString("pin"));
+            return dto;
+        });
+    }
     public void saveOrUpdate(CustomerDTO dto) {
 
         // Check if customer already exists

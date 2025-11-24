@@ -24,6 +24,10 @@ public class SalesExcelService {
     public SalesExcelService(SalesExcelRepository repo) {
         this.repo = repo;
     }
+    public List<CustomerDTO> getAllCustomers() {
+        return custRepo.findAll();
+    }
+    
     public void saveOrUpdateCustomer(CustomerDTO dto) {
         // extra validations if needed
         if (dto.getCustNo() == null || dto.getCustNo().isBlank()) {
