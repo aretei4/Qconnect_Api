@@ -14,6 +14,7 @@ public class Util {
      * @return         java.sql.Date or null if parsing fails
      */
     public static Date toSqlDate(String dateStr, String format) {
+     
         if (dateStr == null || dateStr.trim().isEmpty()) {
             return null;
         }
@@ -25,7 +26,7 @@ public class Util {
             return new Date(utilDate.getTime());
         } catch (ParseException e) {
             System.err.println("Invalid date format for value: " + dateStr + " (expected: " + format + ")");
-            return null;
+            return new Date(System.currentTimeMillis());
         }
     }
 

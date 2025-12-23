@@ -12,6 +12,7 @@ import com.api.distr.docs.jwt.Util;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class SalesExcelService {
@@ -70,6 +71,29 @@ public class SalesExcelService {
         return errors;
     }
 
+    private SalesRecord parseRow(Map<String, Object> row ) throws Exception {
+        SalesRecord r = new SalesRecord();
+
+        r.setPicklistNo(""+row.get("PicklistNo"));
+      //  r.setSalesOrderNo(getString(row.getCell(1)));
+        r.setCustomerNo(""+row.get("CustomerNo"));
+        r.setCustDesc(""+row.get("CustomerName"));
+        //r.setSalesRepNo(getString(row.getCell(4)));
+        //r.setSalesRepName(getString(row.getCell(5)));
+        //r.setRoute(getString(row.getCell(6)));
+        //r.setRouteName(getString(row.getCell(7)));
+        
+        
+        String billingDateStr = ""+row.get("BillingDate");
+        java.sql.Date billingDate = Util.toSqlDate(billingDateStr, DistrConstants.DATE_FORMAT);//(java.sql.Date) new Date( getStringCellValue(row.getCell(8)));
+        r.setBillingDate(billingDate);  // YYYY-MM-DD
+
+        //r.setWarehouse(getString(row.getCell(9)));
+        r.setNetValue(Double.parseDouble(""+row.get("NetValue")));
+
+        return r;
+    }
+    
     private SalesRecord parseRow(Row row) throws Exception {
         SalesRecord r = new SalesRecord();
 

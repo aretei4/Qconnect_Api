@@ -16,12 +16,37 @@ public class ExcelUploadController {
 
     public ExcelUploadController(SalesExcelService service) {
         this.service = service;
-    }
+    } 
     @Autowired
   DeliveryExcelService deliveryService;
 
+    @Autowired
+    private ExcelUploadService tempservice;
+
+    @Autowired
+    private TemplateService templateservice;
     
     @PostMapping("/upload")
+    public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file,
+    		   @RequestParam("type") String type) {
+    	  try {
+    		  List<String> errors = new ArrayList<>();
+    	ExcelTemplate excelTemp = templateservice.getTemplate(type);
+        // Normally fetch mapping from DB;
+        Map<String, String> mappings =excelTemp.getMappings();          
+        	tempservice.importExcel(file, mappings);
+        	
+        	return ResponseEntity.ok(
+        		    Map.of("message", "Excel uploaded successfully")
+        		);
+
+            //return ResponseEntity.ok("Excel uploaded successfully!");
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+        }
+    }
+    
+    @PostMapping("/uploadTemplate")
     public ResponseEntity<?> uploadExcel(
             @RequestParam("file") MultipartFile file,
             @RequestParam("type") String type) {
