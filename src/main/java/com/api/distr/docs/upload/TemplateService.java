@@ -12,7 +12,7 @@ public class TemplateService {
     private TemplateDao templateDao;
 
     public void saveTemplate(ExcelTemplate template) {
-        templateDao.saveTemplate(template);
+        templateDao.saveOrUpdateTemplate(template);
     }
 
     public ExcelTemplate getTemplate(String name) {

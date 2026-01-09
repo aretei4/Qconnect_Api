@@ -32,9 +32,19 @@ public class ExcelUploadController {
     	  try {
     		  List<String> errors = new ArrayList<>();
     	ExcelTemplate excelTemp = templateservice.getTemplate(type);
+    	 Map<String, String> mappings =excelTemp.getMappings(); 
+    	 String temTyple = excelTemp.getTemplateType();
+    	if(temTyple.equalsIgnoreCase("customer")) {
+    		tempservice.excelMaster(file, mappings, "C");
+    	}else if(temTyple.equalsIgnoreCase("delivery")) {
+    		tempservice.excelMaster(file, mappings, "D");
+    	}
+    	else {
+    		tempservice.importExcel(file, mappings);
+    	}
         // Normally fetch mapping from DB;
-        Map<String, String> mappings =excelTemp.getMappings();          
-        	tempservice.importExcel(file, mappings);
+                
+        	
         	
         	return ResponseEntity.ok(
         		    Map.of("message", "Excel uploaded successfully")

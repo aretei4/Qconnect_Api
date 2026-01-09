@@ -25,5 +25,12 @@ public interface QueryConstants {
 	        "FROM stage_sales_entery " +
 	        "WHERE picklist_no IN (" +
 	        "SELECT picklist_no FROM delivery_assignments where status=0 and delivery_boy_id ='";
+	 
+	 String SELECT_DELIVERY_MOBILE = """
+	            SELECT delivery_id, delivery_name, bu_id
+	            FROM delivery_master
+	            WHERE delivery_mobile = ?
+	              AND active = true
+	        """;
 
 }

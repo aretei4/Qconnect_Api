@@ -17,15 +17,51 @@ public class TemplateDao {
     @Autowired
     private JdbcTemplate jdbc;
 
-    public void saveTemplate(ExcelTemplate t) {
-        String sql = "INSERT INTO excel_template (template_name, template_type, mappings) VALUES (?, ?, ?::jsonb)";
+ 
+    public void saveOrUpdateTemplate(ExcelTemplate t) {
 
-        jdbc.update(sql,
-                t.getTemplateName(),
-                t.getTemplateType(),
-                new JSONObject(t.getMappings()).toString()
+        // 1. Check count
+        String countSql = "SELECT COUNT(1) FROM excel_template WHERE template_name = ?";
+        Integer count = jdbc.queryForObject(
+                countSql,
+                Integer.class,
+                t.getTemplateName()
         );
+
+        // 2. Insert or Update
+        if (count != null && count > 0) {
+            // UPDATE
+            String updateSql = """
+                UPDATE excel_template
+                SET template_type = ?,
+                    mappings = ?::jsonb
+                WHERE template_name = ?
+            """;
+
+            jdbc.update(
+                    updateSql,
+                    t.getTemplateType(),
+                    new JSONObject(t.getMappings()).toString(),
+                    t.getTemplateName()
+            );
+
+        } else {
+            // INSERT
+            String insertSql = """
+                INSERT INTO excel_template (template_name, template_type, mappings)
+                VALUES (?, ?, ?::jsonb)
+            """;
+
+            jdbc.update(
+                    insertSql,
+                    t.getTemplateName(),
+                    t.getTemplateType(),
+                    new JSONObject(t.getMappings()).toString()
+            );
+        }
     }
+
+
     
     public List<String> getAllTemplateNames() {
         String sql = "SELECT template_name FROM excel_template ORDER BY template_name";

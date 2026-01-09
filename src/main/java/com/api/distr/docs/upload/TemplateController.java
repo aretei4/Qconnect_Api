@@ -1,6 +1,7 @@
 package com.api.distr.docs.upload;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +22,8 @@ public class TemplateController {
     @PostMapping("/save")
     public ResponseEntity<?> saveTemplate(@RequestBody ExcelTemplate template) {
         templateService.saveTemplate(template);
-        return ResponseEntity.ok("Template saved successfully");
+       
+        return ResponseEntity.ok( Map.of("message", "Template saved successfully"));
     }
 
     @GetMapping("/{templateName}")

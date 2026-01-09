@@ -10,6 +10,15 @@ public class DeliveryExcelRepository {
     @Autowired
     private JdbcTemplate jdbc;
 
+    public void saveOrUpdate(DeliveryExcelDTO dto) {
+    	
+    	   int count = countByMobile(dto.getDeliveryMobile());
+           if (count > 0) {
+               update(dto);
+           } else {
+               insert(dto);
+           }
+    }
     public int countByMobile(String mobile) {
         String sql = "SELECT COUNT(*) FROM delivery_master WHERE delivery_mobile=?";
         return jdbc.queryForObject(sql, Integer.class, mobile);
@@ -18,9 +27,9 @@ public class DeliveryExcelRepository {
     public void insert(DeliveryExcelDTO dto) {
         String sql = """
             INSERT INTO delivery_master (
-                delivery_name, delivery_mobile, updated_date, active, bu_id, lat, lon, address
+                delivery_name, delivery_mobile, updated_date, active, bu_id, lat, lon, address,type
             )
-            VALUES (?, ?, ?, true, 100, ?, ?, ?)
+            VALUES (?, ?, ?, true, 100, ?, ?, ?,?)
             """;
 
         jdbc.update(conn -> {
@@ -31,6 +40,7 @@ public class DeliveryExcelRepository {
             ps.setObject(4, dto.getLat());
             ps.setObject(5, dto.getLon());
             ps.setString(6, dto.getAddress());
+            ps.setString(7, dto.getType());
             return ps;
         });
     }

@@ -11,8 +11,26 @@ public class DeliveryExcelDTO {
     private Double lat;
     private Double lon;
     private String address;
+    private String type;
+    private String pin;
+    
+    public String getPin() {
+		return pin;
+	}
 
-    public String getDeliveryName() {
+	public void setPin(String pin) {
+		this.pin = pin;
+	}
+
+	public String getType() {
+		return type;
+	}
+
+	public void setType(String type) {
+		this.type = type;
+	}
+
+	public String getDeliveryName() {
         return deliveryName;
     }
 

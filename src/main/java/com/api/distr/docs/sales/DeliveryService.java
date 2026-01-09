@@ -6,9 +6,11 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 
 import com.api.distr.docs.sales.dto.DeliveryAgent;
+import com.api.distr.docs.sales.dto.DeliveryLoginResponse;
 import com.api.distr.docs.sales.dto.DeliveryRequest;
 import com.api.distr.docs.sales.dto.DeliveryStatus;
 import com.api.distr.docs.sales.dto.SalesEntry;
+import com.api.distr.docs.sales.dto.SalesEntryDto;
 import com.api.distr.docs.sales.repo.DeliveryRepository;
 
 @Service
@@ -20,6 +22,10 @@ public class DeliveryService {
         this.deliveryRepository = deliveryRepository;
     }
 
+    public DeliveryLoginResponse login(String mobileNumber) {
+        return deliveryRepository.findByMobile(mobileNumber);
+    }
+    
     public String assignDeliveries(DeliveryRequest request) {
         deliveryRepository.saveOrUpdate(request);
         return "Delivery assignments updated successfully.";
@@ -36,7 +42,7 @@ public class DeliveryService {
     	return deliveryRepository.deleteByPicklistNo(picklistNo);
     }
     
-    public List<SalesEntry> getDeliveryList(Map<String, String> filters) {
+    public List<SalesEntryDto> getDeliveryList(Map<String, String> filters) {
     	String value = "";
     	   for (Map.Entry<String, String> entry : filters.entrySet()) {
                String column = entry.getKey().toLowerCase();

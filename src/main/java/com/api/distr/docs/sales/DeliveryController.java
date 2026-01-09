@@ -14,12 +14,15 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.api.distr.docs.sales.dto.ApiResponse;
 import com.api.distr.docs.sales.dto.DeliveryAgent;
+import com.api.distr.docs.sales.dto.DeliveryLoginRequest;
+import com.api.distr.docs.sales.dto.DeliveryLoginResponse;
 import com.api.distr.docs.sales.dto.DeliveryRequest;
 import com.api.distr.docs.sales.dto.DeliveryStatus;
 import com.api.distr.docs.sales.dto.DeliveryStatusDTO;
 import com.api.distr.docs.sales.dto.OtpRequest;
 import com.api.distr.docs.sales.dto.OtpResponse;
 import com.api.distr.docs.sales.dto.SalesEntry;
+import com.api.distr.docs.sales.dto.SalesEntryDto;
 import com.api.distr.docs.sales.repo.DeliveryStatusService;
 
 @RestController
@@ -33,7 +36,22 @@ public class DeliveryController {
   
     @Autowired
     private DeliveryStatusService service;
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody DeliveryLoginRequest request) {
 
+        try {
+            DeliveryLoginResponse response =
+            		deliveryService.login(request.getMobileNumber());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body("Invalid mobile number");
+        }
+    }
+    
     @GetMapping("/statusList")
     public List<DeliveryStatusDTO> filter(
             @RequestParam String fromDate,
@@ -74,7 +92,7 @@ public class DeliveryController {
 
     
     @GetMapping("/deliveryList")
-    public List<SalesEntry> getPicklists(@RequestParam Map<String, String> filters) {
+    public List<SalesEntryDto> getPicklists(@RequestParam Map<String, String> filters) {
         if (filters.isEmpty()) {
             throw new IllegalArgumentException("At least one filter must be provided.");
         }
