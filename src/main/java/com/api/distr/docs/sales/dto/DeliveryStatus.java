@@ -9,8 +9,23 @@ public class DeliveryStatus {
     private String paymentMode;
     private String picklistNo;
     private String reason;
-
-    // Getters and setters
+    private Double lat;
+    private Double lon;
+    
+    
+    public Double getLat() {
+		return lat;
+	}
+	public void setLat(Double lat) {
+		this.lat = lat;
+	}
+	public Double getLon() {
+		return lon;
+	}
+	public void setLon(Double lon) {
+		this.lon = lon;
+	}
+	// Getters and setters
     public Long getDelivery_id() { return delivery_id; }
     public void setDelivery_id(Long delivery_id) { this.delivery_id = delivery_id; }
 

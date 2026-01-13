@@ -8,6 +8,8 @@ import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import com.api.distr.docs.sales.dto.DeliveryStatus;
+
 @Repository
 public class CustomerRepository {
 
@@ -27,6 +29,22 @@ public class CustomerRepository {
         return (value == null || value.isBlank()) ? 0.00 : Double.parseDouble(value);
     }
     
+    public int updateCustomerLatLon(
+    		DeliveryStatus deliVery) {
+
+        String sql = """
+            UPDATE customer_details
+            SET lat = ?, lon = ?
+            WHERE cust_no IN (
+                SELECT customer_no
+                FROM stage_sales_entery
+                WHERE picklist_no = ?
+            )
+        """;
+
+        return jdbc.update(sql, deliVery.getLat(), deliVery.getLon(), deliVery.getPicklistNo());
+    }
+
     public List<CustomerDTO> findAll() {
 
         String sql = """

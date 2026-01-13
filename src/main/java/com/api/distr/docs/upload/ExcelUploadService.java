@@ -32,6 +32,8 @@ public class ExcelUploadService {
 	@Autowired
 	private DeliveryExcelRepository excelRepo;
 
+
+	
 	@Autowired
 	private ExcelUtils utils;
 
@@ -82,8 +84,14 @@ public class ExcelUploadService {
 			Map<String, Object> rowData = new HashMap<>();
 			populate(mappings, rowData, row);
 			rowData.put("type", type);
-			DeliveryExcelDTO daoRow = parseMaster(rowData);
-			excelRepo.saveOrUpdate(daoRow);
+			if(type.equalsIgnoreCase("c")) {
+				CustomerDTO daoRow = parseCustomer(rowData);
+				custRepo.saveOrUpdate(daoRow);
+			}else {
+				DeliveryExcelDTO daoRow = parseMaster(rowData);
+				excelRepo.saveOrUpdate(daoRow);
+			}
+			
 			//updateDb(daoRow);
 			// Save row via DAO
 			// dao.saveCustomerRow(rowData);
@@ -134,6 +142,22 @@ public class ExcelUploadService {
 		 // master: ["", "Mobile", "address", "lat", "lon", "pin"]
 		 return dto;
 	 }
+	 
+	 private CustomerDTO parseCustomer(Map<String, Object> row) throws Exception {
+		 CustomerDTO dto = new CustomerDTO();
+		 dto.setAddress(""+row.get("address"));
+		 dto.setCustDesc(""+row.get("Name"));
+		 dto.setCustMobile(""+row.get("Mobile"));
+		 dto.setCustNo(""+row.get("CustNo"));
+		// dto.setType(""+row.get("type"));
+		 dto.setLat(Double.parseDouble(""+row.get("lat")));
+		 dto.setLon(Double.parseDouble(""+row.get("lon")));
+		// dto.setUpdatedDate(""+row.get("address"));
+		 dto.setPin(""+row.get("pin"));
+		 // master: ["", "Mobile", "address", "lat", "lon", "pin"]
+		 return dto;
+	 }
+	 
 	private SalesRecord parseRow(Map<String, Object> row) throws Exception {
 		SalesRecord r = new SalesRecord();
 

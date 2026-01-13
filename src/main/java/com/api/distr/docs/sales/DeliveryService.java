@@ -3,6 +3,7 @@ package com.api.distr.docs.sales;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.api.distr.docs.sales.dto.DeliveryAgent;
@@ -12,12 +13,16 @@ import com.api.distr.docs.sales.dto.DeliveryStatus;
 import com.api.distr.docs.sales.dto.SalesEntry;
 import com.api.distr.docs.sales.dto.SalesEntryDto;
 import com.api.distr.docs.sales.repo.DeliveryRepository;
+import com.api.distr.docs.upload.CustomerRepository;
 
 @Service
 public class DeliveryService {
 
     private final DeliveryRepository deliveryRepository;
-
+   
+    @Autowired
+    CustomerRepository ccustRepo;
+    
     public DeliveryService(DeliveryRepository deliveryRepository) {
         this.deliveryRepository = deliveryRepository;
     }
@@ -32,6 +37,7 @@ public class DeliveryService {
     }
     public String upsertByPicklistNo(DeliveryStatus deliveryStatus) {
         deliveryRepository.upsertByPicklistNo(deliveryStatus);
+        ccustRepo.updateCustomerLatLon(deliveryStatus);
         return "Delivery assignments updated successfully.";
     }
     
