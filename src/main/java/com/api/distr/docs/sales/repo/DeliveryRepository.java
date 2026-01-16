@@ -47,7 +47,8 @@ public class DeliveryRepository {
 		Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, d.getPicklistNo());
 		String updateAssign = """
 				UPDATE delivery_assignments
-				SET status=?
+				SET status=?,
+				delivery_date = CURRENT_TIMESTAMP
 				WHERE picklist_no=?""";
 		int status = 1;
 		if (d.isDelivered()) {
