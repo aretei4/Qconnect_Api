@@ -19,7 +19,7 @@ public class DashboardDao {
 		String sql = """
 				 SELECT
 				    COUNT(*) FILTER (
-				       delivery_date::date = CURRENT_DATE
+				       where delivery_date::date = CURRENT_DATE
 				    ) AS total,
 				    COUNT(*) FILTER (
 				        WHERE status = 2
