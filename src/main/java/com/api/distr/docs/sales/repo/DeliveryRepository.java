@@ -1,23 +1,19 @@
 package com.api.distr.docs.sales.repo;
 
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Repository;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
 
 import com.api.distr.docs.sales.dto.DeliveryAgent;
 import com.api.distr.docs.sales.dto.DeliveryLoginResponse;
 import com.api.distr.docs.sales.dto.DeliveryRequest;
 import com.api.distr.docs.sales.dto.DeliveryStatus;
-import com.api.distr.docs.sales.dto.SalesEntry;
 import com.api.distr.docs.sales.dto.SalesEntryDto;
-
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 @Repository
 public class DeliveryRepository {

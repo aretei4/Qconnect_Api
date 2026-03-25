@@ -15,8 +15,8 @@ public class DashboardService {
         this.dashboardDao = dashboardDao;
     }
 
-    public DeliverySummaryDto getSummary() {
-        return dashboardDao.getDeliverySummary();
+    public DeliverySummaryDto getSummary(String boyId) {
+        return dashboardDao.getDeliverySummary(boyId);
     }
 
     public List<DeliveryDetailsDto> getDetails(String status) {

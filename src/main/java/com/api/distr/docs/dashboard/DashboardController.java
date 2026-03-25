@@ -16,8 +16,11 @@ public class DashboardController {
     }
 
     @GetMapping("/delivery-summary")
-    public DeliverySummaryDto getDeliverySummary() {
-        return dashboardService.getSummary();
+    public DeliverySummaryDto getDeliverySummary(
+            @RequestParam(required = false) String boyId
+    ) {
+    	System.out.println(" Boy id is ******************  "+boyId);
+        return dashboardService.getSummary(boyId);
     }
 
     @GetMapping("/deliveries")

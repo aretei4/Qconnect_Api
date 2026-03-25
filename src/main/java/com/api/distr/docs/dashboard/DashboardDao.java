@@ -3,6 +3,7 @@ package com.api.distr.docs.dashboard;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Repository
@@ -14,43 +15,67 @@ public class DashboardDao {
 		this.jdbcTemplate = jdbcTemplate;
 	}
 
-	public DeliverySummaryDto getDeliverySummary() {
+	public DeliverySummaryDto getDeliverySummary(String boyId) {
 
-		String sql = """
-				 SELECT
-				    COUNT(*) FILTER (
-				       where delivery_date::date = CURRENT_DATE
-				    ) AS total,
-				    COUNT(*) FILTER (
-				        WHERE status = 2
-				          AND delivery_date::date = CURRENT_DATE
-				    ) AS delivered,
+	    StringBuilder sql = new StringBuilder("""
+	        SELECT
+	            COUNT(*) AS total,
+	            COUNT(*) FILTER (WHERE status = 2) AS delivered,
+	            COUNT(*) FILTER (WHERE status = 0) AS pending,
+	            COUNT(*) FILTER (WHERE status = 1) AS cancelled,
 
-				    COUNT(*) FILTER (
-				        WHERE status = 0
-				    ) AS pending,
+	            COUNT(*) FILTER (
+	                WHERE delivery_date::date = CURRENT_DATE
+	            ) AS today_total,
 
-				    COUNT(*) FILTER (
-				        WHERE status = 1
-				          AND delivery_date::date = CURRENT_DATE
-				    ) AS cancelled
+	            COUNT(*) FILTER (
+	                WHERE status = 2
+	                  AND delivery_date::date = CURRENT_DATE
+	            ) AS today_delivered,
 
-				FROM delivery_assignments;
+	            COUNT(*) FILTER (
+	                WHERE status = 0
+	                  AND delivery_date::date = CURRENT_DATE
+	            ) AS today_pending,
 
+	            COUNT(*) FILTER (
+	                WHERE status = 1
+	                  AND delivery_date::date = CURRENT_DATE
+	            ) AS today_cancelled
 
+	        FROM delivery_assignments
+	        WHERE 1=1
+	    """);
 
-								        """;
+	    List<Object> params = new ArrayList<>();
 
-		return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
-			DeliverySummaryDto dto = new DeliverySummaryDto();
-			dto.setTotalDeliveries(rs.getInt("total"));
-			dto.setDelivered(rs.getInt("delivered"));
-			dto.setPending(rs.getInt("pending"));
-			dto.setCancelled(rs.getInt("cancelled"));
-			return dto;
-		});
+	    // ✅ ADD CONDITION ONLY IF boyId IS PRESENT
+	    if (boyId != null) {
+	        sql.append(" AND delivery_boy_id = ?");
+	        params.add(boyId);
+	    }
+
+	    return jdbcTemplate.queryForObject(
+	        sql.toString(),
+	        params.toArray(),
+	        (rs, rowNum) -> {
+	            DeliverySummaryDto dto = new DeliverySummaryDto();
+
+	            dto.setTotalDeliveries(rs.getInt("total"));
+	            dto.setDelivered(rs.getInt("delivered"));
+	            dto.setPending(rs.getInt("pending"));
+	            dto.setCancelled(rs.getInt("cancelled"));
+
+	            dto.setTodayTotal(rs.getInt("today_total"));
+	            dto.setTodayDelivered(rs.getInt("today_delivered"));
+	            dto.setTodayPending(rs.getInt("today_pending"));
+	            dto.setTodayCancelled(rs.getInt("today_cancelled"));
+
+	            return dto;
+	        }
+	    );
 	}
-
+	
 	public List<DeliveryDetailsDto> getDeliveryDetails(String status) {
 
 		String sql;
