@@ -127,8 +127,8 @@ public class DeliveryRepository {
 	        // 👇 Values are SET here
 	        dto.setPicklistNo(rs.getString("picklistNo"));
 	       // dto.setSalesOrderNo(rs.getString("sales_order_no"));
-	        dto.setCustDesc(rs.getString("custDesc"));
-	        dto.setCustomerNo(rs.getString("customerNo"));
+	        dto.setCustDesc(rs.getString("customerNo"));
+	        dto.setCustomerNo(rs.getString("custDesc"));
 	        dto.setNetValue(""+rs.getDouble("netValue"));
 	        // dto.setUpdateDate(rs.getTimestamp("update_date"));
 
