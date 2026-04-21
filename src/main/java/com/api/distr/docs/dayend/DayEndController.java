@@ -1,17 +1,12 @@
 package com.api.distr.docs.dayend;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/dayend")
@@ -19,53 +14,61 @@ public class DayEndController {
 
     @Autowired
     private DayEndService service;
-    
-    @Autowired
-    private DayEndApprovalService aprovalService;
 
- // ✅ CREATE
+    @Autowired
+    private DayEndApprovalService approvalService;
+
+    // ✅ CREATE
     @PostMapping("/create")
     public ResponseEntity<String> create(@RequestBody DayEndDto dto) {
-    	aprovalService.createDayEnd(dto);
+        approvalService.createDayEnd(dto);
         return ResponseEntity.ok("DayEnd Created");
     }
 
-    // ✅ APPROVE
+    // ✅ APPROVE BY ID
     @PostMapping("/approve")
     public ResponseEntity<String> approve(@RequestBody DayEndDto dto) {
-    	aprovalService.approveDayEnd(dto);
+        approvalService.approveDayEndById(dto);
         return ResponseEntity.ok("DayEnd Approved");
     }
 
-    // ❌ REJECT
+    // ❌ REJECT BY ID
     @PostMapping("/reject")
     public ResponseEntity<String> reject(@RequestBody DayEndDto dto) {
-    	aprovalService.rejectDayEnd(dto);
+        approvalService.rejectDayEndById(dto);
         return ResponseEntity.ok("DayEnd Rejected");
     }
 
- 
-    @GetMapping("/get")
-    public ResponseEntity<DayEndResponseDto> get(
-            @RequestParam Long deliveryId,
-            @RequestParam @DateTimeFormat(pattern = "dd-MM-yyyy") LocalDate date
+    // 🔍 LIST
+    @GetMapping("/dayEndSummery")
+    public ResponseEntity<List<DayEndResponseDto>> get(
+            @RequestParam(required = false) Long deliveryId,
+            @RequestParam(required = false)
+            @DateTimeFormat(pattern = "dd-MM-yyyy") LocalDate fromDate,
+            @RequestParam(required = false)
+            @DateTimeFormat(pattern = "dd-MM-yyyy") LocalDate toDate
     ) {
-        DayEndDto dto = new DayEndDto();
-        dto.setDeliveryId(deliveryId);
-        dto.setDate(date.format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
 
-        return ResponseEntity.ok(aprovalService.getDayEnd(dto));
+        if (toDate == null) {
+            toDate = LocalDate.now();
+        }
+
+        if (fromDate == null) {
+            fromDate = toDate.minusDays(15);
+        }
+
+        return ResponseEntity.ok(
+                approvalService.getDayEndList(deliveryId, fromDate, toDate)
+        );
     }
-    
+
+    // 📊 SUMMARY
     @GetMapping("/summary")
     public ResponseEntity<DayEndSummary> getSummary(
             @RequestParam("date")
             @DateTimeFormat(pattern = "dd-MM-yyyy") LocalDate date,
-
             @RequestParam(value = "deliveryId", required = false) Long deliveryId
     ) {
         return ResponseEntity.ok(service.getDayEndSummary(date, deliveryId));
     }
-    
-    
 }

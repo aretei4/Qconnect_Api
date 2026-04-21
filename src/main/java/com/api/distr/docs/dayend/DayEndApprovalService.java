@@ -2,6 +2,8 @@ package com.api.distr.docs.dayend;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -13,18 +15,17 @@ public class DayEndApprovalService {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    // ✅ Common Date Parser
+    // ✅ Date Parser
     private LocalDate parseDate(String date) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
         return LocalDate.parse(date, formatter);
     }
 
-    // ✅ CREATE (PENDING)
+    // ✅ CREATE
     public void createDayEnd(DayEndDto dto) {
 
         LocalDate date = parseDate(dto.getDate());
 
-        // 🔒 Prevent duplicate
         String checkSql = """
             SELECT COUNT(*) FROM dayend_approval
             WHERE delivery_id = ? AND delivery_date = ?
@@ -55,56 +56,53 @@ public class DayEndApprovalService {
         );
     }
 
-    // ✅ APPROVE
-    public void approveDayEnd(DayEndDto dto) {
+    // ✅ APPROVE BY ID
+    public void approveDayEndById(DayEndDto dto) {
 
-        LocalDate date = parseDate(dto.getDate());
+        if (dto.getDayendId() == null) {
+            throw new RuntimeException("dayendId is required");
+        }
 
-        String updateSql = """
+        String sql = """
             UPDATE dayend_approval
             SET status = 'APPROVED',
                 approved_at = NOW(),
                 reject_reason = NULL
-            WHERE delivery_id = ?
-              AND delivery_date = ?
+            WHERE id = ?
               AND status = 'PENDING'
         """;
 
-        int updated = jdbcTemplate.update(
-                updateSql,
-                dto.getDeliveryId(),
-                date
-        );
+        int updated = jdbcTemplate.update(sql, dto.getDayendId());
 
         if (updated == 0) {
             throw new RuntimeException("No pending DayEnd found to approve");
         }
     }
 
-    // ❌ REJECT
-    public void rejectDayEnd(DayEndDto dto) {
+    // ❌ REJECT BY ID
+    public void rejectDayEndById(DayEndDto dto) {
 
-        LocalDate date = parseDate(dto.getDate());
+        if (dto.getDayendId() == null) {
+            throw new RuntimeException("dayendId is required");
+        }
 
         if (dto.getRejectReason() == null || dto.getRejectReason().isBlank()) {
             throw new RuntimeException("Reject reason is required");
         }
 
-        String updateSql = """
+        String sql = """
             UPDATE dayend_approval
             SET status = 'REJECTED',
                 reject_reason = ?,
                 approved_at = NULL
-            WHERE delivery_id = ?
-              AND delivery_date = ?
+            WHERE id = ?
               AND status = 'PENDING'
         """;
 
         int updated = jdbcTemplate.update(
-                updateSql,
+                sql,
                 dto.getRejectReason(),
-                dto.getDeliveryId(),
-                date
+                dto.getDayendId()
         );
 
         if (updated == 0) {
@@ -112,35 +110,50 @@ public class DayEndApprovalService {
         }
     }
 
-    // 🔍 GET
-    public DayEndResponseDto getDayEnd(DayEndDto dto) {
+    // 🔍 LIST (UNCHANGED)
+    public List<DayEndResponseDto> getDayEndList(
+            Long deliveryId,
+            LocalDate fromDate,
+            LocalDate toDate
+    ) {
 
-        LocalDate date = parseDate(dto.getDate());
-
-        String sql = """
-            SELECT d.delivery_id,
-                   dm.delivery_name AS delivery_boy_name,
-                   d.delivery_date,
-                   d.status,
-                   d.total_amount,
-                   d.reject_reason,
-                   d.request_date,
-                   d.approved_at
+        StringBuilder sql = new StringBuilder("""
+            SELECT
+                d.id,
+                d.delivery_id,
+                dm.delivery_name AS delivery_boy_name,
+                d.delivery_date,
+                d.status,
+                d.total_amount,
+                d.reject_reason,
+                d.request_date,
+                d.approved_at
             FROM dayend_approval d
             LEFT JOIN delivery_master dm
                    ON d.delivery_id = dm.delivery_id
-            WHERE d.delivery_id = ?
-              AND d.delivery_date = ?
-        """;
+            WHERE d.delivery_date BETWEEN ? AND ?
+        """);
 
-        return jdbcTemplate.queryForObject(
-                sql,
+        List<Object> params = new ArrayList<>();
+        params.add(fromDate);
+        params.add(toDate);
+
+        if (deliveryId != null) {
+            sql.append(" AND d.delivery_id = ?");
+            params.add(deliveryId);
+        }
+
+        sql.append(" ORDER BY d.delivery_date DESC");
+
+        return jdbcTemplate.query(
+                sql.toString(),
+                params.toArray(),
                 (rs, rowNum) -> {
 
                     DayEndResponseDto res = new DayEndResponseDto();
-
+                    res.setDayendId(rs.getLong("id"));
                     res.setDeliveryId(rs.getLong("delivery_id"));
-                    res.setDeliveryBoyName(rs.getString("delivery_boy_name")); // 🆕
+                    res.setDeliveryBoyName(rs.getString("delivery_boy_name"));
                     res.setDeliveryDate(rs.getDate("delivery_date").toLocalDate());
                     res.setStatus(rs.getString("status"));
                     res.setTotalAmount(rs.getDouble("total_amount"));
@@ -157,9 +170,7 @@ public class DayEndApprovalService {
                     );
 
                     return res;
-                },
-                dto.getDeliveryId(),
-                date
+                }
         );
     }
 }

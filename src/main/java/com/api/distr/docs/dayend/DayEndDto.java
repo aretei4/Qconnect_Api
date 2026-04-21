@@ -8,6 +8,15 @@ public class DayEndDto {
 
     // for reject
     private String rejectReason;
+	private Long dayendId;
+	
+	public Long getDayendId() {
+		return dayendId;
+	}
+
+	public void setDayendId(Long dayendId) {
+		this.dayendId = dayendId;
+	}
 
 	public String getDate() {
 		return date;

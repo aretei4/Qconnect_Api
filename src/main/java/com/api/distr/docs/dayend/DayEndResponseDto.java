@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 public class DayEndResponseDto {
 
-
+		private Long dayendId;
 	    private Long deliveryId;
 	    private String deliveryBoyName;
 
@@ -23,6 +23,15 @@ public class DayEndResponseDto {
 
 	    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy HH:mm:ss")
 	    private LocalDateTime approvedAt;
+
+	    
+		public Long getDayendId() {
+			return dayendId;
+		}
+
+		public void setDayendId(Long dayendId) {
+			this.dayendId = dayendId;
+		}
 
 		public Long getDeliveryId() {
 			return deliveryId;
