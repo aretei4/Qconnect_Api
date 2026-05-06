@@ -2,61 +2,92 @@ package com.api.distr.docs.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.List;
+
+/**
+ * NOTE: @EnableWebMvc is intentionally NOT here.
+ * Placing @EnableWebMvc on SecurityConfig conflicts with Spring Security 6's
+ * MvcRequestMatcher / HandlerMappingIntrospector and causes 403 on permitAll() routes.
+ * MVC configuration lives in WebConfig.
+ */
 @Configuration
-@EnableWebMvc
+@EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
+    private final JwtAuthFilter jwtAuthFilter;
 
-	
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+        this.jwtAuthFilter = jwtAuthFilter;
+    }
+
+    // ── Password encoder (shared across the app) ──────────────────────────────
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(12);
+    }
+
+    // ── CORS — lives here so Security processes preflight before MVC ──────────
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration cfg = new CorsConfiguration();
+        cfg.setAllowedOriginPatterns(List.of("*"));
+        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        cfg.setAllowedHeaders(List.of("*"));
+        cfg.setExposedHeaders(List.of("Authorization"));
+        cfg.setAllowCredentials(false);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", cfg);
+        return source;
+    }
+
+    // ── Security filter chain ─────────────────────────────────────────────────
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-    	System.out.println("   insidesecurityFilterChain  ************  ");
-        /*http
+        http
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Allow access to static resources
-                .requestMatchers(
-                    "/", 
-                    "/index.html", 
-                    "/js/**", 
-                    "/css/**", 
-                    "/images/**",
-                    "/favicon.ico"
-                ).permitAll()
-                
-                // Secure other endpoints
-                .anyRequest().authenticated()
+
+                // AntPathRequestMatcher — no MVC introspection dependency
+                .requestMatchers(new AntPathRequestMatcher("/**", "OPTIONS")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/api/auth/**")).permitAll()
+
+                // User management
+                .requestMatchers(new AntPathRequestMatcher("/api/users/**", "GET"))
+                    .hasAnyRole("ADMIN", "MANAGER")
+                .requestMatchers(new AntPathRequestMatcher("/api/users/**", "POST"))
+                    .hasRole("ADMIN")
+                .requestMatchers(new AntPathRequestMatcher("/api/users/**", "PUT"))
+                    .hasRole("ADMIN")
+                .requestMatchers(new AntPathRequestMatcher("/api/users/**", "DELETE"))
+                    .hasRole("ADMIN")
+
+                // All existing endpoints stay public
+                .anyRequest().permitAll()
             )
-            
-            // Optional: Configure form login
-            .formLogin(form -> form
-                .loginPage("/login")
-                .permitAll()
-            )
-            
-            // Optional: Configure logout
-            .logout(logout -> logout
-                .permitAll()
-            );
-           
-            	http
-        .authorizeHttpRequests(auth -> auth
-            .anyRequest().permitAll()
-            // Allow access to all endpoints
-        );
- */
-            	http
-                .csrf(csrf -> csrf.disable()) // Disable CSRF
-                .authorizeHttpRequests(auth -> auth
-                    .anyRequest().permitAll() // Allow all requests
-                );
-            	
-    	
-     //   .csrf(csrf -> csrf.en()); // Disable CSRF for simplicity
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 }
