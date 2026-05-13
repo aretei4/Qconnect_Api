@@ -20,44 +20,33 @@ public class TemplateDao {
  
     public void saveOrUpdateTemplate(ExcelTemplate t) {
 
-        // 1. Check count
-        String countSql = "SELECT COUNT(1) FROM excel_template WHERE template_name = ?";
-        Integer count = jdbc.queryForObject(
-                countSql,
-                Integer.class,
-                t.getTemplateName()
-        );
+        // Auto-generate a stable template_name from company + type when company is provided
+        if (t.getCompanyName() != null && !t.getCompanyName().isBlank()) {
+            t.setTemplateName(t.getCompanyName().trim() + "_" + t.getTemplateType().trim());
+        }
 
-        // 2. Insert or Update
+        String mappingsJson = new JSONObject(t.getMappings()).toString();
+
+        String countSql = "SELECT COUNT(1) FROM excel_template WHERE template_name = ?";
+        Integer count = jdbc.queryForObject(countSql, Integer.class, t.getTemplateName());
+
         if (count != null && count > 0) {
-            // UPDATE
             String updateSql = """
                 UPDATE excel_template
                 SET template_type = ?,
-                    mappings = ?::jsonb
+                    mappings      = ?::jsonb,
+                    company_name  = ?
                 WHERE template_name = ?
             """;
-
-            jdbc.update(
-                    updateSql,
-                    t.getTemplateType(),
-                    new JSONObject(t.getMappings()).toString(),
-                    t.getTemplateName()
-            );
-
+            jdbc.update(updateSql,
+                    t.getTemplateType(), mappingsJson, t.getCompanyName(), t.getTemplateName());
         } else {
-            // INSERT
             String insertSql = """
-                INSERT INTO excel_template (template_name, template_type, mappings)
-                VALUES (?, ?, ?::jsonb)
+                INSERT INTO excel_template (template_name, template_type, mappings, company_name)
+                VALUES (?, ?, ?::jsonb, ?)
             """;
-
-            jdbc.update(
-                    insertSql,
-                    t.getTemplateName(),
-                    t.getTemplateType(),
-                    new JSONObject(t.getMappings()).toString()
-            );
+            jdbc.update(insertSql,
+                    t.getTemplateName(), t.getTemplateType(), mappingsJson, t.getCompanyName());
         }
     }
 
@@ -77,15 +66,60 @@ public class TemplateDao {
             t.setId(rs.getInt("id"));
             t.setTemplateName(rs.getString("template_name"));
             t.setTemplateType(rs.getString("template_type"));
+            t.setCompanyName(rs.getString("company_name"));
 
             String json = rs.getString("mappings");
             try {
-				t.setMappings(new ObjectMapper().readValue(json, Map.class));
-			} catch (JsonProcessingException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+                t.setMappings(new ObjectMapper().readValue(json, Map.class));
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
+            return t;
+        });
+    }
 
+    /** Returns all sales/invoice templates as {templateName, companyName} objects. */
+    public List<ExcelTemplate> getSalesCompanies() {
+        String sql = """
+            SELECT template_name, company_name
+            FROM   excel_template
+            WHERE  template_type = 'sales'
+            ORDER  BY company_name
+            """;
+        return jdbc.query(sql, (rs, rowNum) -> {
+            ExcelTemplate t = new ExcelTemplate();
+            t.setTemplateName(rs.getString("template_name"));
+            t.setCompanyName(rs.getString("company_name"));
+            return t;
+        });
+    }
+
+    /** All distinct company names (non-null) across all templates. */
+    public List<String> getDistinctCompanies() {
+        String sql = """
+            SELECT DISTINCT company_name
+            FROM   excel_template
+            WHERE  company_name IS NOT NULL AND company_name <> ''
+            ORDER  BY company_name
+            """;
+        return jdbc.queryForList(sql, String.class);
+    }
+
+    /** All templates that belong to a specific company (includes full mappings). */
+    public List<ExcelTemplate> getTemplatesByCompany(String companyName) {
+        String sql = "SELECT * FROM excel_template WHERE company_name = ? ORDER BY template_type";
+        return jdbc.query(sql, new Object[]{companyName}, (rs, rowNum) -> {
+            ExcelTemplate t = new ExcelTemplate();
+            t.setId(rs.getInt("id"));
+            t.setTemplateName(rs.getString("template_name"));
+            t.setTemplateType(rs.getString("template_type"));
+            t.setCompanyName(rs.getString("company_name"));
+            String json = rs.getString("mappings");
+            try {
+                t.setMappings(new ObjectMapper().readValue(json, Map.class));
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
             return t;
         });
     }

@@ -26,15 +26,37 @@ public class TemplateController {
         return ResponseEntity.ok( Map.of("message", "Template saved successfully"));
     }
 
+    // ── Literal paths first (must come before the /{templateName} wildcard) ──
+
+    @GetMapping("/names")
+    public ResponseEntity<List<String>> getTemplateNames() {
+        return ResponseEntity.ok(templateService.getAllTemplateNames());
+    }
+
+    /** GET /api/template/companies — all distinct company names across all templates */
+    @GetMapping("/companies")
+    public ResponseEntity<List<String>> getCompanies() {
+        return ResponseEntity.ok(templateService.getDistinctCompanies());
+    }
+
+    /** GET /api/template/sales-companies — returns all invoice/sales templates with their company names */
+    @GetMapping("/sales-companies")
+    public ResponseEntity<List<ExcelTemplate>> getSalesCompanies() {
+        return ResponseEntity.ok(templateService.getSalesCompanies());
+    }
+
+    /** GET /api/template/by-company/{companyName} — all templates for a specific company */
+    @GetMapping("/by-company/{companyName}")
+    public ResponseEntity<List<ExcelTemplate>> getByCompany(@PathVariable String companyName) {
+        return ResponseEntity.ok(templateService.getTemplatesByCompany(companyName));
+    }
+
+    // ── Wildcard — must be last ───────────────────────────────────────────────
+
     @GetMapping("/{templateName}")
     public ResponseEntity<?> getTemplate(@PathVariable String templateName) {
         ExcelTemplate template = templateService.getTemplate(templateName);
         return ResponseEntity.ok(template);
-    }
-    
-    @GetMapping("/names")
-    public ResponseEntity<List<String>> getTemplateNames() {
-        return ResponseEntity.ok(templateService.getAllTemplateNames());
     }
 }
 

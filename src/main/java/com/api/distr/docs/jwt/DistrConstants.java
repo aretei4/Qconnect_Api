@@ -5,7 +5,7 @@ import java.util.List;
 public interface DistrConstants {
 	
 	static final List<String> REQUIRED_HEADERS = List.of("Name", "Score", "Department");
-	static final String DATE_FORMAT = "DD/mm/yyyy";
+	static final String DATE_FORMAT = "dd/MM/yyyy";
 	static final String STAGE_SELECT_COUNT = 
 		    "SELECT COUNT(*) FROM stage_sales_entery WHERE picklist_no = ?";
 

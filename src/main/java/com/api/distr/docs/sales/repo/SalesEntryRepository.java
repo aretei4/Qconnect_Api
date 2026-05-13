@@ -26,6 +26,13 @@ public class SalesEntryRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    public int deleteByPicklistNos(List<String> picklistNos) {
+        // Build  DELETE ... WHERE picklist_no IN (?,?,?)
+        String placeholders = String.join(",", java.util.Collections.nCopies(picklistNos.size(), "?"));
+        String sql = "DELETE FROM stage_sales_entery WHERE picklist_no IN (" + placeholders + ")";
+        return jdbcTemplate.update(sql, picklistNos.toArray());
+    }
+
     public List<SalesEntry> findByFilters(Map<String, String> filters) {
         // Build dynamic SQL
         StringBuilder sql = new StringBuilder(QueryConstants.SELECT_SALES);
@@ -64,6 +71,7 @@ public class SalesEntryRepository {
             entry.setNetValue(rs.getDouble("Net_Value"));
             entry.setUpdateDate(rs.getDate("Update_Date"));
             entry.setBuId(rs.getInt("Bu_id"));
+            entry.setCompanyName(rs.getString("company_name"));
             return entry;
         }
     }

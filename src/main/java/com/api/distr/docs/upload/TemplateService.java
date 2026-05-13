@@ -21,5 +21,17 @@ public class TemplateService {
     public List<String> getAllTemplateNames() {
         return templateDao.getAllTemplateNames();
     }
+
+    public List<ExcelTemplate> getSalesCompanies() {
+        return templateDao.getSalesCompanies();
+    }
+
+    public List<String> getDistinctCompanies() {
+        return templateDao.getDistinctCompanies();
+    }
+
+    public List<ExcelTemplate> getTemplatesByCompany(String companyName) {
+        return templateDao.getTemplatesByCompany(companyName);
+    }
 }
 

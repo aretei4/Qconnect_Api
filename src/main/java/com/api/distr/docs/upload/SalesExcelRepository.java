@@ -18,13 +18,15 @@ public class SalesExcelRepository {
     private static final String SQL_INSERT =
             "INSERT INTO stage_sales_entery (" +
                     "picklist_no, sales_order_no, customer_no, cust_desc, sales_rep_no, " +
-                    "sales_rep_name, route, route_name, billing_date, warehouse, net_value" +
-            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    "sales_rep_name, route, route_name, billing_date, warehouse, net_value, " +
+                    "company_name, update_date, bu_id" +
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_DATE, 100)";
 
     private static final String SQL_UPDATE =
             "UPDATE stage_sales_entery SET " +
                     "sales_order_no=?, customer_no=?, cust_desc=?, sales_rep_no=?, " +
-                    "sales_rep_name=?, route=?, route_name=?, billing_date=?, warehouse=?, net_value=? " +
+                    "sales_rep_name=?, route=?, route_name=?, billing_date=?, warehouse=?, " +
+                    "net_value=?, company_name=?, update_date=CURRENT_DATE " +
                     "WHERE picklist_no=?";
     
 
@@ -46,6 +48,7 @@ public class SalesExcelRepository {
             ps.setDate(9, r.getBillingDate());
             ps.setString(10, r.getWarehouse());
             ps.setDouble(11, r.getNetValue());
+            ps.setString(12, r.getCompanyName());
             return ps;
         });
     }
@@ -63,7 +66,8 @@ public class SalesExcelRepository {
             ps.setDate(8, r.getBillingDate());
             ps.setString(9, r.getWarehouse());
             ps.setDouble(10, r.getNetValue());
-            ps.setString(11, r.getPicklistNo());
+            ps.setString(11, r.getCompanyName());
+            ps.setString(12, r.getPicklistNo());
             return ps;
         });
     }

@@ -82,5 +82,9 @@ public class SalesRecord {
     private java.sql.Date billingDate;
     private String warehouse;
     private Double netValue;
+    private String companyName;
+
+    public String getCompanyName()                    { return companyName; }
+    public void   setCompanyName(String companyName)  { this.companyName = companyName; }
 }
 

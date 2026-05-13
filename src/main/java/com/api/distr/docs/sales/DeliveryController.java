@@ -88,6 +88,21 @@ public class DeliveryController {
     public List<DeliveryAgent> getAllAgents() {
         return deliveryService.getAllAgents();
     }
+
+    /** POST /api/delivery/agent — create a new agent from the frontend Add Agent form */
+    @PostMapping("/agent")
+    public ResponseEntity<?> createAgent(@RequestBody DeliveryAgent request) {
+        try {
+            DeliveryAgent created = deliveryService.createAgent(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to create agent: " + ex.getMessage()));
+        }
+    }
     
 
     

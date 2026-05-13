@@ -94,12 +94,30 @@ public class DeliveryRepository {
 		@Override
 		public DeliveryAgent mapRow(ResultSet rs, int rowNum) throws SQLException {
 			DeliveryAgent d = new DeliveryAgent();
-			d.setId(rs.getLong("delivery_id"));
-			d.setName(rs.getString("delivery_name"));
+			d.setId     (rs.getLong("delivery_id"));
+			d.setName   (rs.getString("delivery_name"));
 			d.setContact(rs.getString("delivery_mobile"));
-			d.setUpdatedDate(rs.getDate("updated_date") != null ? rs.getDate("updated_date").toLocalDate() : null);
-			d.setActive(rs.getBoolean("active"));
-			d.setBuId(rs.getInt("bu_id"));
+			d.setAltContact(rs.getString("alt_mobile"));
+			d.setActive (rs.getBoolean("active"));
+			d.setBuId   (rs.getInt("bu_id"));
+			d.setUpdatedDate(rs.getDate("updated_date") != null
+				? rs.getDate("updated_date").toLocalDate() : null);
+
+			// ── Address ───────────────────────────────────────────────────────
+			d.setAddress1(rs.getString("address1"));
+			d.setAddress2(rs.getString("address2"));
+			d.setAddress3(rs.getString("address3"));
+			d.setCity    (rs.getString("city"));
+			d.setPinCode (rs.getString("pin_code"));
+
+			// ── Identity & Banking ────────────────────────────────────────────
+			d.setFatherName (rs.getString("father_name"));
+			d.setAadharNo   (rs.getString("aadhar_no"));
+			d.setPanCard    (rs.getString("pan_card"));
+			d.setBankAccount(rs.getString("bank_account"));
+			d.setDateOfJoining(rs.getDate("date_of_joining") != null
+				? rs.getDate("date_of_joining").toLocalDate() : null);
+
 			return d;
 		}
 	}
@@ -107,6 +125,47 @@ public class DeliveryRepository {
 	public List<DeliveryAgent> findAll() {
 		String sql = "SELECT * FROM delivery_master ORDER BY delivery_id";
 		return jdbcTemplate.query(sql, new DeliveryMapper());
+	}
+
+	/** Insert a new agent from the Add Agent form (frontend). */
+	public DeliveryAgent createAgent(DeliveryAgent req) {
+		String sql = """
+			INSERT INTO delivery_master (
+				delivery_name, delivery_mobile, alt_mobile,
+				active, bu_id,
+				address1, address2, address3, city, pin_code,
+				father_name, aadhar_no, pan_card, bank_account,
+				date_of_joining, updated_date
+			) VALUES (
+				?, ?, ?,
+				true, 100,
+				?, ?, ?, ?, ?,
+				?, ?, ?, ?,
+				?, CURRENT_DATE
+			) RETURNING delivery_id
+			""";
+
+		Long newId = jdbcTemplate.queryForObject(sql, Long.class,
+			req.getName(),
+			req.getContact(),
+			req.getAltContact(),
+			req.getAddress1(),
+			req.getAddress2(),
+			req.getAddress3(),
+			req.getCity(),
+			req.getPinCode(),
+			req.getFatherName(),
+			req.getAadharNo(),
+			req.getPanCard(),
+			req.getBankAccount(),
+			req.getDateOfJoining() != null
+				? java.sql.Date.valueOf(req.getDateOfJoining()) : null
+		);
+
+		req.setId(newId);
+		req.setActive(true);
+		req.setBuId(100);
+		return req;
 	}
 
 	public int deleteByPicklistNo(String picklistNo) {
@@ -127,8 +186,8 @@ public class DeliveryRepository {
 	        // 👇 Values are SET here
 	        dto.setPicklistNo(rs.getString("picklistNo"));
 	       // dto.setSalesOrderNo(rs.getString("sales_order_no"));
-	        dto.setCustDesc(rs.getString("customerNo"));
-	        dto.setCustomerNo(rs.getString("custDesc"));
+	        dto.setCustomerNo(rs.getString("customerNo"));
+        dto.setCustDesc(rs.getString("custDesc"));
 	        dto.setNetValue(""+rs.getDouble("netValue"));
 	        // dto.setUpdateDate(rs.getTimestamp("update_date"));
 

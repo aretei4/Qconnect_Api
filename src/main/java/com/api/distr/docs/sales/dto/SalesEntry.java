@@ -17,6 +17,7 @@ public class SalesEntry {
     private Double netValue;
     private Date updateDate;
     private Integer buId;
+    private String companyName;
 
     // Getters & Setters
     public String getPicklistNo() { return picklistNo; }
@@ -57,5 +58,8 @@ public class SalesEntry {
 
     public Integer getBuId() { return buId; }
     public void setBuId(Integer buId) { this.buId = buId; }
+
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
 }
 

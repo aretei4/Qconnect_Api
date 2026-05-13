@@ -44,6 +44,14 @@ public class DeliveryService {
     public List<DeliveryAgent> getAllAgents() {
         return deliveryRepository.findAll();
     }
+
+    public DeliveryAgent createAgent(DeliveryAgent request) {
+        if (request.getName() == null || request.getName().isBlank())
+            throw new IllegalArgumentException("Agent name is required");
+        if (request.getContact() == null || request.getContact().isBlank())
+            throw new IllegalArgumentException("Mobile number is required");
+        return deliveryRepository.createAgent(request);
+    }
     public int deleteByPicklistNo(String picklistNo) {
     	return deliveryRepository.deleteByPicklistNo(picklistNo);
     }

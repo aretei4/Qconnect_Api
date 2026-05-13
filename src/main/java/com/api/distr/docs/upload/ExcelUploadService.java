@@ -37,33 +37,20 @@ public class ExcelUploadService {
 	@Autowired
 	private ExcelUtils utils;
 
-	public void importExcel(MultipartFile file, Map<String, String> mappings) throws Exception {
+	public void importExcel(MultipartFile file, Map<String, String> mappings, String companyName) throws Exception {
 
 		Workbook wb = WorkbookFactory.create(file.getInputStream());
 		Sheet sheet = wb.getSheetAt(0);
 
-		// Loop through all rows (skip header)
 		for (int r = 1; r <= sheet.getLastRowNum(); r++) {
-
 			Row row = sheet.getRow(r);
-			if (row == null)
-				continue;
+			if (row == null) continue;
 
 			Map<String, Object> rowData = new HashMap<>();
 			populate(mappings, rowData, row);
-			// Process mapping: "E" -> "customerName"
-			/*
-			 * for (String excelColumn : mappings.keySet()) {
-			 * 
-			 * String fieldName = mappings.get(excelColumn); int colIndex =
-			 * utils.excelColumnToIndex(excelColumn); Cell cell = row.getCell(colIndex);
-			 * String value = utils.getCellValue(cell); rowData.put(fieldName, value); }
-			 */
 
-			SalesRecord daoRow = parseRow(rowData);
+			SalesRecord daoRow = parseRow(rowData, companyName);
 			updateDb(daoRow);
-			// Save row via DAO
-			// dao.saveCustomerRow(rowData);
 		}
 
 		wb.close();
@@ -131,16 +118,44 @@ public class ExcelUploadService {
 	 
 	 private DeliveryExcelDTO parseMaster(Map<String, Object> row) throws Exception {
 		 DeliveryExcelDTO dto = new DeliveryExcelDTO();
-		 dto.setAddress(""+row.get("address"));
-		 dto.setDeliveryName(""+row.get("Name"));
-		 dto.setDeliveryMobile(""+row.get("Mobile"));
-		 dto.setType(""+row.get("type"));
-		 dto.setLat(Double.parseDouble(""+row.get("lat")));
-		 dto.setLon(Double.parseDouble(""+row.get("lon")));
-		// dto.setUpdatedDate(""+row.get("address"));
-		 dto.setPin(""+row.get("pin"));
-		 // master: ["", "Mobile", "address", "lat", "lon", "pin"]
+
+		 // ── Core ──────────────────────────────────────────────────────────────
+		 dto.setDeliveryName  (str(row, "Name"));
+		 dto.setDeliveryMobile(str(row, "Mobile"));
+		 dto.setAltMobile     (str(row, "Alternative Mobile"));
+		 dto.setType          (str(row, "type"));
+
+		 // ── Address ───────────────────────────────────────────────────────────
+		 dto.setAddress1(str(row, "Address Line 1"));
+		 dto.setAddress2(str(row, "Address Line 2"));
+		 dto.setAddress3(str(row, "Address Line 3"));
+		 dto.setCity    (str(row, "City"));
+		 dto.setPinCode (str(row, "Pin Code"));
+		 // keep legacy address column populated for backward compat
+		 dto.setAddress (str(row, "Address Line 1"));
+
+		 // ── Identity & Banking ────────────────────────────────────────────────
+		 dto.setFatherName  (str(row, "Father Name"));
+		 dto.setAadharNo    (str(row, "Aadhar No"));
+		 dto.setPanCard     (str(row, "PAN Card"));
+		 dto.setBankAccount (str(row, "Bank Account"));
+
+		 // ── Date of Joining ───────────────────────────────────────────────────
+		 String doj = str(row, "Date of Joining");
+		 if (doj != null && !doj.isBlank()) {
+			 try { dto.setDateOfJoining(Util.toSqlDate(doj, DistrConstants.DATE_FORMAT)); }
+			 catch (Exception ignored) { /* keep null if format doesn't match */ }
+		 }
+
 		 return dto;
+	 }
+
+	 /** Safely read a String value from the row map; returns null if missing or "null". */
+	 private String str(Map<String, Object> row, String key) {
+		 Object val = row.get(key);
+		 if (val == null) return null;
+		 String s = val.toString().trim();
+		 return s.isEmpty() || s.equalsIgnoreCase("null") ? null : s;
 	 }
 	 
 	 private CustomerDTO parseCustomer(Map<String, Object> row) throws Exception {
@@ -158,20 +173,49 @@ public class ExcelUploadService {
 		 return dto;
 	 }
 	 
-	private SalesRecord parseRow(Map<String, Object> row) throws Exception {
+	private SalesRecord parseRow(Map<String, Object> row, String companyName) throws Exception {
 		SalesRecord r = new SalesRecord();
 
-		r.setPicklistNo("" + row.get("PicklistNo"));
-		r.setCustomerNo("" + row.get("CustomerNo"));
-		r.setCustDesc("" + row.get("CustomerName"));
-		
-		String billingDateStr = "" + row.get("BillingDate");
-		java.sql.Date billingDate = Util.toSqlDate(billingDateStr, DistrConstants.DATE_FORMAT);// (java.sql.Date) new
-																								// Date(
-																								// getStringCellValue(row.getCell(8)));
-		r.setBillingDate(billingDate); // YYYY-MM-DD		
-		r.setNetValue(Double.parseDouble("" + row.get("NetValue")));
+		r.setPicklistNo (str(row, "PicklistNo"));
+		r.setCustomerNo (str(row, "CustomerNo"));
+		r.setCustDesc   (str(row, "CustomerName"));
+		r.setCompanyName(companyName);
+
+		// ── Billing date — try multiple common formats ────────────────────────
+		r.setBillingDate(parseSqlDate(str(row, "BillingDate")));
+
+		// ── Net value — strip commas, handle blanks safely ────────────────────
+		r.setNetValue(parseDouble(str(row, "NetValue")));
 
 		return r;
+	}
+
+	/**
+	 * Parse a date string trying several common formats.
+	 * Returns null (not today's date) when the string is blank or unparseable.
+	 */
+	private java.sql.Date parseSqlDate(String s) {
+		if (s == null || s.isBlank()) return null;
+		String[] formats = { "dd/MM/yyyy", "dd-MM-yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "dd.MM.yyyy" };
+		for (String fmt : formats) {
+			try {
+				java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat(fmt);
+				sdf.setLenient(false);
+				return new java.sql.Date(sdf.parse(s.trim()).getTime());
+			} catch (java.text.ParseException ignored) { }
+		}
+		System.err.println("Could not parse date: " + s);
+		return null;
+	}
+
+	/** Parse a number string, stripping commas and spaces. Returns 0.0 on blank/error. */
+	private double parseDouble(String s) {
+		if (s == null || s.isBlank()) return 0.0;
+		try {
+			return Double.parseDouble(s.replace(",", "").trim());
+		} catch (NumberFormatException e) {
+			System.err.println("Could not parse number: " + s);
+			return 0.0;
+		}
 	}
 }
