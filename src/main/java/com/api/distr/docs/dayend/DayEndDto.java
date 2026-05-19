@@ -2,13 +2,14 @@ package com.api.distr.docs.dayend;
 
 public class DayEndDto {
 
-    private String date;        // dd-MM-yyyy
+    private String date;           // dd-MM-yyyy
     private Long deliveryId;
     private Double totalAmount;
+    private java.util.List<String> picklistNos;  // picklists included in this day-end
 
     // for reject
     private String rejectReason;
-	private Long dayendId;
+    private Long dayendId;
 	
 	public Long getDayendId() {
 		return dayendId;
@@ -17,6 +18,9 @@ public class DayEndDto {
 	public void setDayendId(Long dayendId) {
 		this.dayendId = dayendId;
 	}
+
+	public java.util.List<String> getPicklistNos() { return picklistNos; }
+	public void setPicklistNos(java.util.List<String> picklistNos) { this.picklistNos = picklistNos; }
 
 	public String getDate() {
 		return date;

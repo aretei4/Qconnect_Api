@@ -18,7 +18,14 @@ public class DayEndController {
     @Autowired
     private DayEndApprovalService approvalService;
 
-    // ✅ CREATE
+    // 🚀 START — agent begins day-end process
+    @PostMapping("/start")
+    public ResponseEntity<String> start(@RequestBody DayEndDto dto) {
+        approvalService.startDayEnd(dto);
+        return ResponseEntity.ok("DayEnd Started");
+    }
+
+    // ✅ CREATE — agent submits final picklists + amount (moves STARTED → PENDING)
     @PostMapping("/create")
     public ResponseEntity<String> create(@RequestBody DayEndDto dto) {
         approvalService.createDayEnd(dto);

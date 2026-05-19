@@ -2,7 +2,6 @@ package com.api.distr.docs.sales;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -10,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import com.api.distr.docs.sales.dto.ApiResponse;
 import com.api.distr.docs.sales.dto.DeliveryAgent;
@@ -21,9 +19,10 @@ import com.api.distr.docs.sales.dto.DeliveryStatus;
 import com.api.distr.docs.sales.dto.DeliveryStatusDTO;
 import com.api.distr.docs.sales.dto.OtpRequest;
 import com.api.distr.docs.sales.dto.OtpResponse;
-import com.api.distr.docs.sales.dto.SalesEntry;
 import com.api.distr.docs.sales.dto.SalesEntryDto;
 import com.api.distr.docs.sales.repo.DeliveryStatusService;
+import com.api.distr.docs.sales.repo.DeliveryMapService;
+import com.api.distr.docs.sales.dto.DeliveryMapDTO;
 
 @RestController
 @RequestMapping("/api/delivery")
@@ -33,114 +32,100 @@ public class DeliveryController {
     public DeliveryController(DeliveryService deliveryService) {
         this.deliveryService = deliveryService;
     }
-  
+
     @Autowired
     private DeliveryStatusService service;
+
+    @Autowired
+    private DeliveryMapService mapService;
+
+    // ── Auth ──────────────────────────────────────────────────────────────────
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody DeliveryLoginRequest request) {
-
         try {
-            DeliveryLoginResponse response =
-            		deliveryService.login(request.getMobileNumber());
-
+            DeliveryLoginResponse response = deliveryService.login(request.getMobileNumber());
             return ResponseEntity.ok(response);
-
         } catch (Exception e) {
-            return ResponseEntity
-                    .status(HttpStatus.UNAUTHORIZED)
-                    .body("Invalid mobile number");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid mobile number");
         }
     }
-    
+
+    // ── Delivery list / status ────────────────────────────────────────────────
     @GetMapping("/statusList")
     public List<DeliveryStatusDTO> filter(
+            @RequestParam String fromDate,
+            @RequestParam String toDate) {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        return service.getByUpdateDate(
+                LocalDate.parse(fromDate, fmt),
+                LocalDate.parse(toDate,   fmt));
+    }
+
+    @GetMapping("/map")
+    public List<DeliveryMapDTO> getMapPoints(
             @RequestParam String fromDate,
             @RequestParam String toDate
     ) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
         LocalDate from = LocalDate.parse(fromDate, formatter);
-        LocalDate to = LocalDate.parse(toDate, formatter);
-
-        return service.getByUpdateDate(from, to);
+        LocalDate to   = LocalDate.parse(toDate, formatter);
+        return mapService.getMapPoints(from, to);
     }
-    
-    
+
     @PostMapping("/delivery-status")
     public ResponseEntity<?> upsertDelivery(@RequestBody DeliveryStatus deliveryStatus) {
-    	String msg="";
         try {
-        	msg=deliveryService.upsertByPicklistNo(deliveryStatus);
-            return ResponseEntity.ok().body(
-                    new ApiResponse(true, msg)
-            );
+            String msg = deliveryService.upsertByPicklistNo(deliveryStatus);
+            return ResponseEntity.ok(new ApiResponse(true, msg));
         } catch (RuntimeException ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse(false, ex.getMessage()));
         }
     }
-    
+
+    @GetMapping("/deliveryList")
+    public List<SalesEntryDto> getPicklists(@RequestParam Map<String, String> filters) {
+        if (filters.isEmpty()) throw new IllegalArgumentException("At least one filter required.");
+        return deliveryService.getDeliveryList(filters);
+    }
+
+    // ── Agents ────────────────────────────────────────────────────────────────
     @PostMapping("/assign")
     public String assignDelivery(@RequestBody DeliveryRequest request) {
         return deliveryService.assignDeliveries(request);
     }
+
     @GetMapping("/allAgents")
     public List<DeliveryAgent> getAllAgents() {
         return deliveryService.getAllAgents();
     }
 
-    /** POST /api/delivery/agent — create a new agent from the frontend Add Agent form */
     @PostMapping("/agent")
     public ResponseEntity<?> createAgent(@RequestBody DeliveryAgent request) {
         try {
-            DeliveryAgent created = deliveryService.createAgent(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+            return ResponseEntity.status(HttpStatus.CREATED).body(deliveryService.createAgent(request));
         } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", ex.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to create agent: " + ex.getMessage()));
         }
     }
-    
 
-    
-    @GetMapping("/deliveryList")
-    public List<SalesEntryDto> getPicklists(@RequestParam Map<String, String> filters) {
-        if (filters.isEmpty()) {
-            throw new IllegalArgumentException("At least one filter must be provided.");
-        }
-        return deliveryService.getDeliveryList(filters);
+    @DeleteMapping("/delete/{picklistNo}")
+    public ResponseEntity<?> deleteDelivery(@PathVariable String picklistNo) {
+        return ResponseEntity.ok(new ApiResponse(true, "" + deliveryService.deleteByPicklistNo(picklistNo)));
     }
-    
+
+    // ── OTP ───────────────────────────────────────────────────────────────────
     @PostMapping("/send-otp")
     public ResponseEntity<OtpResponse> generateOtp(@RequestBody OtpRequest request) {
         try {
-            // Example: you can later check from DB if picklistNo/mobile exist
-            if (request.getMobile() == null || request.getPicklistNo() == null) {
+            if (request.getMobile() == null || request.getPicklistNo() == null)
                 return ResponseEntity.badRequest().body(new OtpResponse("", false));
-            }
-
-            // Here you can generate or fetch OTP dynamically (currently hardcoded)
-            String otp = "5678";
-
-            return ResponseEntity.ok(new OtpResponse(otp, true));
-
+            return ResponseEntity.ok(new OtpResponse("5678", true));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(new OtpResponse("", false));
         }
     }
-    @DeleteMapping("/delete/{picklistNo}")
-    public ResponseEntity<?> deleteDelivery(@PathVariable String picklistNo) {
-        String msg =""+deliveryService.deleteByPicklistNo(picklistNo);
-       // new ApiResponse(true, msg)
-        return ResponseEntity.ok().body(
-                new ApiResponse(true, msg)
-        );
-      //  return ResponseEntity.ok(ApiResponse(true, msg));
-    }
 }
-
-	
-

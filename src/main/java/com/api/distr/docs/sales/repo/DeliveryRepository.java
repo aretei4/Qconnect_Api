@@ -52,21 +52,26 @@ public class DeliveryRepository {
 		}
 		jdbcTemplate.update(updateAssign, status,d.getPicklistNo());
 
+		// payment_mode  → "CASH:1000.0,UPI:500.0"
+		// payment_amount → sum of all mode amounts
+		String paymentModeValue  = d.getPaymentModeDbValue();
+		double paymentAmountTotal = d.getTotalPaymentAmount();
+
 		if (count != null && count > 0) {
 			// Update existing record
 			String updateSql = """
 					UPDATE delivery_status
 					SET delivered=?, otp=?, payment_amount=?, payment_mode=?, reason=?
 					WHERE picklist_no=?""";
-			jdbcTemplate.update(updateSql, d.isDelivered(), d.isOtp(), d.getPaymentAmount(), d.getPaymentMode(),
+			jdbcTemplate.update(updateSql, d.isDelivered(), d.isOtp(), paymentAmountTotal, paymentModeValue,
 					d.getReason(), d.getPicklistNo());
 		} else {
 			// Insert new record
 			String insertSql = """
-					INSERT INTO delivery_status (delivery_id, delivered, otp, payment_amount, payment_mode, picklist_no, reason)
-					VALUES (?, ?, ?, ?, ?, ?, ?)""";
-			jdbcTemplate.update(insertSql, d.getDelivery_id(), d.isDelivered(), d.isOtp(), d.getPaymentAmount(),
-					d.getPaymentMode(), d.getPicklistNo(), d.getReason());
+					INSERT INTO delivery_status (delivery_id, delivered, otp, payment_amount, payment_mode, picklist_no, reason, lat, lon)
+					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""";
+			jdbcTemplate.update(insertSql, d.getDelivery_id(), d.isDelivered(), d.isOtp(), paymentAmountTotal,
+					paymentModeValue, d.getPicklistNo(), d.getReason(), d.getLat(), d.getLon());
 		}
 	}
 
