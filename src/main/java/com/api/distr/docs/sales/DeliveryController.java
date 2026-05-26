@@ -20,6 +20,7 @@ import com.api.distr.docs.sales.dto.DeliveryStatusDTO;
 import com.api.distr.docs.sales.dto.OtpRequest;
 import com.api.distr.docs.sales.dto.OtpResponse;
 import com.api.distr.docs.sales.dto.SalesEntryDto;
+import com.api.distr.docs.sales.dto.SmartRouteAssignItem;
 import com.api.distr.docs.sales.repo.DeliveryStatusService;
 import com.api.distr.docs.sales.repo.DeliveryMapService;
 import com.api.distr.docs.sales.dto.DeliveryMapDTO;
@@ -90,14 +91,45 @@ public class DeliveryController {
     }
 
     // ── Agents ────────────────────────────────────────────────────────────────
+
+    /** Original assign — used by SalesDetail page (single agent, picklist list, car info) */
     @PostMapping("/assign")
     public String assignDelivery(@RequestBody DeliveryRequest request) {
         return deliveryService.assignDeliveries(request);
     }
 
+    /**
+     * Smart Route assign — used by SmartRoute page.
+     * Accepts an array of stops: [{ picklist_no, sequence, deliveryBoyId, deliveryBoyName, lat, lon, address }, ...]
+     */
+    @PostMapping("/smart-assign")
+    public ResponseEntity<?> smartAssign(@RequestBody List<SmartRouteAssignItem> items) {
+        try {
+            String msg = deliveryService.assignSmartRoute(items);
+            return ResponseEntity.ok(new ApiResponse(true, msg));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse(false, "Smart assign failed: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/allAgents")
     public List<DeliveryAgent> getAllAgents() {
         return deliveryService.getAllAgents();
+    }
+
+    @PutMapping("/agent/{id}")
+    public ResponseEntity<?> updateAgent(@PathVariable Long id, @RequestBody DeliveryAgent request) {
+        try {
+            return ResponseEntity.ok(deliveryService.updateAgent(id, request));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to update agent: " + ex.getMessage()));
+        }
     }
 
     @PostMapping("/agent")

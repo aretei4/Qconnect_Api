@@ -1,59 +1,46 @@
 package com.api.distr.docs.dayend;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.List;
+
 public class DayEndDto {
 
     private String date;           // dd-MM-yyyy
+
+    @JsonAlias("delivery_id")
     private Long deliveryId;
+
+    @JsonAlias("total_amount")
     private Double totalAmount;
-    private java.util.List<String> picklistNos;  // picklists included in this day-end
 
-    // for reject
+    /** Accepts both camelCase (picklistNos) and snake_case (picklist_nos). */
+    @JsonProperty("picklistNos")
+    @JsonAlias("picklist_nos")
+    private List<String> picklistNos;
+
+    @JsonAlias("reject_reason")
     private String rejectReason;
+
+    @JsonAlias("dayend_id")
     private Long dayendId;
-	
-	public Long getDayendId() {
-		return dayendId;
-	}
 
-	public void setDayendId(Long dayendId) {
-		this.dayendId = dayendId;
-	}
+    public Long getDayendId()              { return dayendId; }
+    public void setDayendId(Long v)        { this.dayendId = v; }
 
-	public java.util.List<String> getPicklistNos() { return picklistNos; }
-	public void setPicklistNos(java.util.List<String> picklistNos) { this.picklistNos = picklistNos; }
+    public List<String> getPicklistNos()   { return picklistNos; }
+    public void setPicklistNos(List<String> v) { this.picklistNos = v; }
 
-	public String getDate() {
-		return date;
-	}
+    public String getDate()                { return date; }
+    public void setDate(String v)          { this.date = v; }
 
-	public void setDate(String date) {
-		this.date = date;
-	}
+    public Long getDeliveryId()            { return deliveryId; }
+    public void setDeliveryId(Long v)      { this.deliveryId = v; }
 
-	public Long getDeliveryId() {
-		return deliveryId;
-	}
+    public Double getTotalAmount()         { return totalAmount; }
+    public void setTotalAmount(Double v)   { this.totalAmount = v; }
 
-	public void setDeliveryId(Long deliveryId) {
-		this.deliveryId = deliveryId;
-	}
-
-	public Double getTotalAmount() {
-		return totalAmount;
-	}
-
-	public void setTotalAmount(Double totalAmount) {
-		this.totalAmount = totalAmount;
-	}
-
-	public String getRejectReason() {
-		return rejectReason;
-	}
-
-	public void setRejectReason(String rejectReason) {
-		this.rejectReason = rejectReason;
-	}
-
-    // getters & setters
-    
+    public String getRejectReason()        { return rejectReason; }
+    public void setRejectReason(String v)  { this.rejectReason = v; }
 }

@@ -9,4 +9,5 @@ public class DeliveryMapDTO {
     public String delivery_date;   // dd/MM/yyyy
     public String address;         // display address
     public int    sequence;        // stop order within agent's route
+    public Double net_value;       // invoice net value from stage_sales_entery
 }

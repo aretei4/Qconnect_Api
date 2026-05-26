@@ -1,6 +1,8 @@
 package com.api.distr.docs.dayend;
 
 import com.api.distr.docs.sales.dto.PaymentModeEntry;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -150,21 +152,40 @@ public class DayEndService {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     /**
-     * Parses both old single-mode ("CASH") and new multi-mode ("CASH:800.0,UPI:200.0") strings.
+     * Parses the payment_mode DB column, supporting three formats:
+     *
+     *  1. JSON array (new):  '[{"mode":"CHEQUE","amount":3900,"chequeNo":"56789","bankName":"uti"},...]'
+     *  2. KEY:AMOUNT pairs (legacy multi-mode): "CASH:1000.0,UPI:500.0"
+     *  3. Plain mode name (legacy single-mode): "CASH"
+     *
      * @param pmStr     raw payment_mode column value
-     * @param rowTotal  payment_amount column value (fallback when old format has no amount)
+     * @param rowTotal  payment_amount column value (fallback for legacy plain-mode format)
      */
     private List<PaymentModeEntry> parsePaymentModes(String pmStr, double rowTotal) {
-        List<PaymentModeEntry> list = new ArrayList<>();
-        if (pmStr == null || pmStr.isBlank()) return list;
+        if (pmStr == null || pmStr.isBlank()) return Collections.emptyList();
 
-        for (String part : pmStr.split(",")) {
+        String trimmed = pmStr.trim();
+
+        // ── Format 1: JSON array ──────────────────────────────────────────────
+        if (trimmed.startsWith("[")) {
+            try {
+                return MAPPER.readValue(trimmed, new TypeReference<List<PaymentModeEntry>>() {});
+            } catch (Exception ignored) {
+                // Fall through to legacy parsing if JSON is malformed
+            }
+        }
+
+        // ── Format 2 & 3: legacy comma-separated "MODE:AMOUNT" or plain "MODE" ─
+        List<PaymentModeEntry> list = new ArrayList<>();
+        for (String part : trimmed.split(",")) {
             part = part.trim();
             if (part.isEmpty()) continue;
 
             if (part.contains(":")) {
-                // New format: "CASH:1000.0"
+                // "CASH:1000.0"
                 String[] kv = part.split(":", 2);
                 try {
                     String mode   = kv[0].trim();
@@ -172,7 +193,7 @@ public class DayEndService {
                     list.add(new PaymentModeEntry(mode, amount));
                 } catch (NumberFormatException ignored) { }
             } else {
-                // Old format: just the mode name — use rowTotal as the amount
+                // Plain mode name — use total amount as fallback
                 list.add(new PaymentModeEntry(part, rowTotal));
             }
         }

@@ -2,21 +2,26 @@ package com.api.distr.docs.sales.dto;
 
 import java.util.List;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 /**
  * Payload for POST /api/delivery/delivery-status
  *
- * Multiple payment modes — each mode carries its own amount:
+ * Multiple payment modes — each mode carries its own amount plus optional details:
  *
  *   "paymentModes": [
- *     { "mode": "CASH", "amount": 1000.00 },
- *     { "mode": "UPI",  "amount": 500.00  }
+ *     { "mode": "CHEQUE", "amount": 3900, "chequeNo": "56789", "bankName": "uti" },
+ *     { "mode": "UPI",    "amount": 60,   "referenceNo": "ruiio" }
  *   ]
  *
  * Total payment = sum of all mode amounts (computed automatically).
- * Stored in DB as:  payment_mode  = "CASH:1000.0,UPI:500.0"
- *                   payment_amount = 1500.0
+ * Stored in DB as:  payment_mode  = JSON array string (all details preserved)
+ *                   payment_amount = sum of amounts
  */
 public class DeliveryStatus {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private Long    delivery_id;
     private boolean delivered;
@@ -26,7 +31,7 @@ public class DeliveryStatus {
     private Double  lat;
     private Double  lon;
 
-    /** One entry per payment mode, each with its own amount. */
+    /** One entry per payment mode, each with its own amount and optional details. */
     private List<PaymentModeEntry> paymentModes;
 
     // ── computed helpers ──────────────────────────────────────────────────────
@@ -43,17 +48,27 @@ public class DeliveryStatus {
     }
 
     /**
-     * Returns payment detail as a comma-separated string for DB storage.
-     * e.g. "CASH:1000.0,UPI:500.0"
+     * Serializes full payment mode list as a JSON string for DB storage.
+     * Preserves chequeNo, bankName, referenceNo alongside mode and amount.
+     *
+     * e.g. [{"mode":"CHEQUE","amount":3900.0,"chequeNo":"56789","bankName":"uti"},
+     *        {"mode":"UPI","amount":60.0,"referenceNo":"ruiio"}]
+     *
+     * Falls back to "MODE:AMOUNT,..." format if JSON serialization fails.
      */
     public String getPaymentModeDbValue() {
         if (paymentModes == null || paymentModes.isEmpty()) return null;
-        StringBuilder sb = new StringBuilder();
-        for (PaymentModeEntry e : paymentModes) {
-            if (sb.length() > 0) sb.append(",");
-            sb.append(e.getMode()).append(":").append(e.getAmount());
+        try {
+            return MAPPER.writeValueAsString(paymentModes);
+        } catch (JsonProcessingException e) {
+            // Fallback: simple format
+            StringBuilder sb = new StringBuilder();
+            for (PaymentModeEntry entry : paymentModes) {
+                if (sb.length() > 0) sb.append(",");
+                sb.append(entry.getMode()).append(":").append(entry.getAmount());
+            }
+            return sb.toString();
         }
-        return sb.toString();
     }
 
     // ── getters / setters ─────────────────────────────────────────────────────

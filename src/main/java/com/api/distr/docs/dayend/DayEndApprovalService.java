@@ -26,7 +26,14 @@ public class DayEndApprovalService {
     // ✅ START — agent signals day-end has begun (status = STARTED)
     public void startDayEnd(DayEndDto dto) {
 
+        if (dto.getDate() == null || dto.getDate().isBlank())
+            throw new IllegalArgumentException("date is required");
+        if (dto.getDeliveryId() == null)
+            throw new IllegalArgumentException("deliveryId is required");
+
         LocalDate date = parseDate(dto.getDate());
+
+        System.out.println("[DayEnd/start] deliveryId=" + dto.getDeliveryId() + "  date=" + date);
 
         String checkSql = "SELECT COUNT(*) FROM dayend_approval WHERE delivery_id = ? AND delivery_date = ?";
         Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, dto.getDeliveryId(), date);
@@ -60,6 +67,16 @@ public class DayEndApprovalService {
 
         LocalDate date = parseDate(dto.getDate());
 
+        // Convert List<String> → "E587P001,E587P002"
+        String picklistNosStr = (dto.getPicklistNos() != null && !dto.getPicklistNos().isEmpty())
+                ? String.join(",", dto.getPicklistNos())
+                : null;
+
+        System.out.println("[DayEnd] createDayEnd deliveryId=" + dto.getDeliveryId()
+                + "  picklistNos=" + dto.getPicklistNos()
+                + "  picklistNosStr=" + picklistNosStr
+                + "  totalAmount=" + dto.getTotalAmount());
+
         String checkSql = """
             SELECT COUNT(*) FROM dayend_approval
             WHERE delivery_id = ? AND delivery_date = ?
@@ -71,11 +88,6 @@ public class DayEndApprovalService {
                 dto.getDeliveryId(),
                 date
         );
-
-        // Convert List<String> → "E587P001,E587P002"
-        String picklistNosStr = (dto.getPicklistNos() != null && !dto.getPicklistNos().isEmpty())
-                ? String.join(",", dto.getPicklistNos())
-                : null;
 
         if (count != null && count > 0) {
             // Record exists — reset it to PENDING so it can be re-submitted
@@ -220,7 +232,9 @@ public class DayEndApprovalService {
                     res.setRejectReason(rs.getString("reject_reason"));
 
                     res.setRequestDate(
-                            rs.getTimestamp("request_date").toLocalDateTime()
+                            rs.getTimestamp("request_date") != null
+                                    ? rs.getTimestamp("request_date").toLocalDateTime()
+                                    : null
                     );
 
                     res.setStartTime(

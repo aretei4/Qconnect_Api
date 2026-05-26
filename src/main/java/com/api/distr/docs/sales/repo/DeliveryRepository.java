@@ -13,6 +13,7 @@ import com.api.distr.docs.sales.dto.DeliveryAgent;
 import com.api.distr.docs.sales.dto.DeliveryLoginResponse;
 import com.api.distr.docs.sales.dto.DeliveryRequest;
 import com.api.distr.docs.sales.dto.DeliveryStatus;
+import com.api.distr.docs.sales.dto.SmartRouteAssignItem;
 import com.api.distr.docs.sales.dto.SalesEntryDto;
 
 @Repository
@@ -173,6 +174,78 @@ public class DeliveryRepository {
 		return req;
 	}
 
+	public DeliveryAgent updateAgent(Long id, DeliveryAgent req) {
+		String sql = """
+				UPDATE delivery_master SET
+				    delivery_name   = ?,
+				    delivery_mobile = ?,
+				    alt_mobile      = ?,
+				    address1        = ?,
+				    address2        = ?,
+				    address3        = ?,
+				    city            = ?,
+				    pin_code        = ?,
+				    father_name     = ?,
+				    aadhar_no       = ?,
+				    pan_card        = ?,
+				    bank_account    = ?,
+				    date_of_joining = ?,
+				    updated_date    = CURRENT_DATE
+				WHERE delivery_id = ?
+				""";
+		int rows = jdbcTemplate.update(sql,
+				req.getName(),
+				req.getContact(),
+				req.getAltContact(),
+				req.getAddress1(),
+				req.getAddress2(),
+				req.getAddress3(),
+				req.getCity(),
+				req.getPinCode(),
+				req.getFatherName(),
+				req.getAadharNo(),
+				req.getPanCard() != null ? req.getPanCard().toUpperCase() : null,
+				req.getBankAccount(),
+				req.getDateOfJoining() != null ? java.sql.Date.valueOf(req.getDateOfJoining()) : null,
+				id);
+		if (rows == 0) throw new IllegalArgumentException("Agent not found: " + id);
+		req.setId(id);
+		return req;
+	}
+
+	/**
+	 * Upsert a full Smart Route assignment list.
+	 * Writes sequence, lat, lon, address, delivery_boy_id per stop.
+	 * Sets status = 0 (PENDING) and delivery_date = today.
+	 */
+	public void saveSmartRouteAssignments(java.util.List<SmartRouteAssignItem> items) {
+		String sql = """
+				INSERT INTO delivery_assignments
+				    (picklist_no, delivery_boy_id, sequence, lat, lon, address, delivery_date, updated_at, status)
+				VALUES (?, ?, ?, ?, ?, ?, CURRENT_DATE, ?, 0)
+				ON CONFLICT (picklist_no)
+				DO UPDATE SET
+				    delivery_boy_id = EXCLUDED.delivery_boy_id,
+				    sequence        = EXCLUDED.sequence,
+				    lat             = EXCLUDED.lat,
+				    lon             = EXCLUDED.lon,
+				    address         = EXCLUDED.address,
+				    delivery_date   = EXCLUDED.delivery_date,
+				    updated_at      = EXCLUDED.updated_at,
+				    status          = 0
+				""";
+		for (SmartRouteAssignItem item : items) {
+			jdbcTemplate.update(sql,
+					item.picklist_no,
+					item.deliveryBoyId,
+					item.sequence,
+					item.lat   != null ? item.lat  : 0.0,
+					item.lon   != null ? item.lon  : 0.0,
+					item.address != null ? item.address : "",
+					LocalDateTime.now());
+		}
+	}
+
 	public int deleteByPicklistNo(String picklistNo) {
 		String sql = QueryConstants.DELETE_DELIVERY_ASSIGN;
 		return jdbcTemplate.update(sql, picklistNo);
@@ -187,16 +260,11 @@ public class DeliveryRepository {
 	    return jdbcTemplate.query(sql, (rs, rowNum) -> {
 
 	        SalesEntryDto dto = new SalesEntryDto();
-
-	        // 👇 Values are SET here
 	        dto.setPicklistNo(rs.getString("picklistNo"));
-	       // dto.setSalesOrderNo(rs.getString("sales_order_no"));
 	        dto.setCustomerNo(rs.getString("customerNo"));
-        dto.setCustDesc(rs.getString("custDesc"));
+	        dto.setCustDesc(rs.getString("custDesc"));
 	        dto.setNetValue(""+rs.getDouble("netValue"));
-	        // dto.setUpdateDate(rs.getTimestamp("update_date"));
-
-	        return dto;   // 🔴 THIS WAS MISSING
+	        return dto;
 	    });
 	}
 

@@ -12,6 +12,7 @@ import com.api.distr.docs.sales.dto.DeliveryRequest;
 import com.api.distr.docs.sales.dto.DeliveryStatus;
 import com.api.distr.docs.sales.dto.SalesEntry;
 import com.api.distr.docs.sales.dto.SalesEntryDto;
+import com.api.distr.docs.sales.dto.SmartRouteAssignItem;
 import com.api.distr.docs.sales.repo.DeliveryRepository;
 import com.api.distr.docs.upload.CustomerRepository;
 
@@ -35,6 +36,14 @@ public class DeliveryService {
         deliveryRepository.saveOrUpdate(request);
         return "Delivery assignments updated successfully.";
     }
+
+    /** Smart Route assign — accepts the per-stop array from SmartRoute.tsx */
+    public String assignSmartRoute(java.util.List<SmartRouteAssignItem> items) {
+        if (items == null || items.isEmpty())
+            throw new IllegalArgumentException("No stops provided");
+        deliveryRepository.saveSmartRouteAssignments(items);
+        return "Smart route assigned: " + items.size() + " stops";
+    }
     public String upsertByPicklistNo(DeliveryStatus deliveryStatus) {
         deliveryRepository.upsertByPicklistNo(deliveryStatus);
         ccustRepo.updateCustomerLatLon(deliveryStatus);
@@ -52,6 +61,14 @@ public class DeliveryService {
             throw new IllegalArgumentException("Mobile number is required");
         return deliveryRepository.createAgent(request);
     }
+
+    public DeliveryAgent updateAgent(Long id, DeliveryAgent request) {
+        if (request.getName() == null || request.getName().isBlank())
+            throw new IllegalArgumentException("Agent name is required");
+        if (request.getContact() == null || request.getContact().isBlank())
+            throw new IllegalArgumentException("Mobile number is required");
+        return deliveryRepository.updateAgent(id, request);
+    }
     public int deleteByPicklistNo(String picklistNo) {
     	return deliveryRepository.deleteByPicklistNo(picklistNo);
     }
@@ -60,10 +77,10 @@ public class DeliveryService {
     	String value = "";
     	   for (Map.Entry<String, String> entry : filters.entrySet()) {
                String column = entry.getKey().toLowerCase();
-               value = entry.getValue();              
+               value = entry.getValue();
            }
         return deliveryRepository.getAllSales(value);
     }
-    
+
 }
 
