@@ -62,7 +62,7 @@ public class OnlyOfficeEdit {
 			return viewConfig(body);
 		} else {
 			Map<String, Object> qualcy = lockUser(downloadName);
-			if (null != qualcy) {
+			if (null != qualcy && !(downloadName.equalsIgnoreCase("new_template.docx"))) {
 				Map<String, Object> jsonMap = viewConfig(body);
 				jsonMap.put("qualcy", qualcy);
 				return jsonMap;
@@ -115,7 +115,8 @@ public class OnlyOfficeEdit {
 			Map<String, Object> document = (Map<String, Object>) jsonMap.get("document");
 			document.put("key", UUID.randomUUID().toString());
 			document.put("url", fileUrl);
-
+			document.put("title", downloadName);
+			
 			Map<String, Object> editorConfig = (Map<String, Object>) jsonMap.get("editorConfig");
 			editorConfig.put("callbackUrl", callbackUrl);
 			editorConfig.put("user", user);
@@ -158,12 +159,19 @@ public class OnlyOfficeEdit {
 		InputStream inputStream = getClass().getClassLoader().getResourceAsStream("onlyoffice_view.json");
 
 		try {
-			String fileUrl = downLoadUrl + (String) body.get("fileUrl");
+
+			String downloadName = (String) body.get("fileUrl");
+			String fileUrl = downLoadUrl +downloadName;
+			
+
 			logger.info(fileUrl);
 			Map<String, Object> jsonMap = mapper.readValue(inputStream, Map.class);
 			Map<String, Object> document = (Map<String, Object>) jsonMap.get("document");
 			document.put("key", UUID.randomUUID().toString());
 			document.put("url", fileUrl);
+			document.put("title", downloadName);
+			jsonMap.put("document", document);
+			
 			Map<String, Object> editorConfig = (Map<String, Object>) jsonMap.get("editorConfig");
 			editorConfig.put("user", user);
 			jsonMap.put("editorConfig", editorConfig);			
@@ -188,9 +196,11 @@ public class OnlyOfficeEdit {
 	public ResponseEntity<Resource> getFile(@PathVariable String filename) {
 		// Using Paths (modern)
 		try {
-			logger.info("  Storage path Is  " + storagePath);
+			logger.info(filename+"  ****** Storage path Is  " + storagePath);
 
 			Path file = Paths.get(System.getProperty("user.home"), storagePath, filename);
+			logger.info(filename+"  ****** file from path  " + file.getFileName());
+			
 			Resource resource = new UrlResource(file.toUri());
 			return ResponseEntity.ok()
 					.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
