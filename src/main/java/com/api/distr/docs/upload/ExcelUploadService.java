@@ -37,8 +37,9 @@ public class ExcelUploadService {
 	@Autowired
 	private ExcelUtils utils;
 
-	public void importExcel(MultipartFile file, Map<String, String> mappings, String companyName) throws Exception {
+	public List<String> importExcel(MultipartFile file, Map<String, String> mappings, String companyName) throws Exception {
 
+		List<String> allErrors = new ArrayList<>();
 		Workbook wb = WorkbookFactory.create(file.getInputStream());
 		Sheet sheet = wb.getSheetAt(0);
 
@@ -49,15 +50,23 @@ public class ExcelUploadService {
 			Map<String, Object> rowData = new HashMap<>();
 			populate(mappings, rowData, row);
 
-			SalesRecord daoRow = parseRow(rowData, companyName);
-			updateDb(daoRow);
+			try {
+				SalesRecord daoRow = parseRow(rowData, companyName);
+				List<String> rowErrors = updateDb(daoRow);
+				for (String e : rowErrors)
+					allErrors.add("Row " + (r + 1) + ": " + e);
+			} catch (Exception ex) {
+				allErrors.add("Row " + (r + 1) + ": " + ex.getMessage());
+			}
 		}
 
 		wb.close();
+		return allErrors;
 	}
 
 	public void excelMaster(MultipartFile file, Map<String, String> mappings,String type) throws Exception {
 
+		String dateFormat = extractDateFormat(mappings);
 		Workbook wb = WorkbookFactory.create(file.getInputStream());
 		Sheet sheet = wb.getSheetAt(0);
 
@@ -75,7 +84,7 @@ public class ExcelUploadService {
 				CustomerDTO daoRow = parseCustomer(rowData);
 				custRepo.saveOrUpdate(daoRow);
 			}else {
-				DeliveryExcelDTO daoRow = parseMaster(rowData);
+				DeliveryExcelDTO daoRow = parseMaster(rowData, dateFormat);
 				excelRepo.saveOrUpdate(daoRow);
 			}
 			
@@ -89,34 +98,35 @@ public class ExcelUploadService {
 	
 	private void populate(Map<String, String> mappings, Map<String, Object> rowData, Row row) {
 		for (String excelColumn : mappings.keySet()) {
-
+			if (excelColumn.startsWith("_")) continue; // skip reserved keys like _dateFormat
 			String fieldName = mappings.get(excelColumn);
 			int colIndex = utils.excelColumnToIndex(excelColumn);
 			Cell cell = row.getCell(colIndex);
 			String value = utils.getCellValue(cell);
 			rowData.put(fieldName, value);
 		}
+	}
 
+	/** Extracts _dateFormat from mappings, defaulting to dd/MM/yyyy if absent. */
+	private String extractDateFormat(Map<String, String> mappings) {
+		String fmt = mappings.get("_dateFormat");
+		return (fmt != null && !fmt.isBlank()) ? fmt : DistrConstants.DATE_FORMAT;
 	}
 
 	private List<String> updateDb(SalesRecord r) {
 		List<String> errors = new ArrayList<>();
 		try {
-			// SalesRecord r = parseRow(row);
 			custRepo.saveOrUpdate(r);
-			if (repo.findCountByPicklist(r.getPicklistNo()) > 0) {
-				repo.update(r);
-			} else {
+			if (repo.findCountBySalesOrder(r.getSalesOrderNo()) == 0) {
 				repo.insert(r);
 			}
-
 		} catch (Exception ex) {
 			errors.add("Row : " + ex.getMessage());
 		}
 		return errors;
 	}
 	 
-	 private DeliveryExcelDTO parseMaster(Map<String, Object> row) throws Exception {
+	 private DeliveryExcelDTO parseMaster(Map<String, Object> row, String dateFormat) throws Exception {
 		 DeliveryExcelDTO dto = new DeliveryExcelDTO();
 
 		 // ── Core ──────────────────────────────────────────────────────────────
@@ -143,7 +153,7 @@ public class ExcelUploadService {
 		 // ── Date of Joining ───────────────────────────────────────────────────
 		 String doj = str(row, "Date of Joining");
 		 if (doj != null && !doj.isBlank()) {
-			 try { dto.setDateOfJoining(Util.toSqlDate(doj, DistrConstants.DATE_FORMAT)); }
+			 try { dto.setDateOfJoining(Util.toSqlDate(doj, dateFormat)); }
 			 catch (Exception ignored) { /* keep null if format doesn't match */ }
 		 }
 
@@ -160,26 +170,40 @@ public class ExcelUploadService {
 	 
 	 private CustomerDTO parseCustomer(Map<String, Object> row) throws Exception {
 		 CustomerDTO dto = new CustomerDTO();
-		 dto.setAddress(""+row.get("address"));
-		 dto.setCustDesc(""+row.get("Name"));
-		 dto.setCustMobile(""+row.get("Mobile"));
-		 dto.setCustNo(""+row.get("CustNo"));
-		// dto.setType(""+row.get("type"));
-		 dto.setLat(Double.parseDouble(""+row.get("lat")));
-		 dto.setLon(Double.parseDouble(""+row.get("lon")));
-		// dto.setUpdatedDate(""+row.get("address"));
-		 dto.setPin(""+row.get("pin"));
-		 // master: ["", "Mobile", "address", "lat", "lon", "pin"]
+		 dto.setCustNo    (str(row, "Customer No"));
+		 dto.setCustDesc  (str(row, "Customer Name"));
+		 dto.setCustMobile(str(row, "Mobile"));
+
+		 // Combine address lines into one field
+		 String addr1 = str(row, "Address Line 1");
+		 String addr2 = str(row, "Address Line 2");
+		 String address = addr1 != null ? addr1 : "";
+		 if (addr2 != null && !addr2.isBlank()) address = address + ", " + addr2;
+		 dto.setAddress(address.isBlank() ? null : address);
+
+		 dto.setPin(str(row, "Pin Code"));
+		 dto.setLat(parseDoubleOrNull(str(row, "Lat")));
+		 dto.setLon(parseDoubleOrNull(str(row, "Lon")));
 		 return dto;
+	 }
+
+	 private Double parseDoubleOrNull(String s) {
+		 if (s == null || s.isBlank()) return null;
+		 try { return Double.parseDouble(s.replace(",", "").trim()); }
+		 catch (NumberFormatException e) { return null; }
 	 }
 	 
 	private SalesRecord parseRow(Map<String, Object> row, String companyName) throws Exception {
 		SalesRecord r = new SalesRecord();
 
-		r.setPicklistNo (str(row, "PicklistNo"));
-		r.setCustomerNo (str(row, "CustomerNo"));
-		r.setCustDesc   (str(row, "CustomerName"));
-		r.setCompanyName(companyName);
+		String invoiceNo = str(row, "InvoiceNo");
+		String picklistNo = str(row, "PicklistNo");
+		r.setPicklistNo  (picklistNo != null ? picklistNo : "00000");
+		r.setSalesOrderNo(invoiceNo);
+		r.setCustomerNo  (str(row, "CustomerNo"));
+		r.setCustDesc    (str(row, "CustomerName"));
+		r.setSalesRepName(str(row, "SalesRepName"));
+		r.setCompanyName (companyName);
 
 		// ── Billing date — try multiple common formats ────────────────────────
 		r.setBillingDate(parseSqlDate(str(row, "BillingDate")));
@@ -192,16 +216,29 @@ public class ExcelUploadService {
 
 	/**
 	 * Parse a date string trying several common formats.
-	 * Returns null (not today's date) when the string is blank or unparseable.
+	 * Also handles raw Excel date serial numbers (e.g. "46189").
+	 * Returns null when the string is blank or unparseable.
 	 */
 	private java.sql.Date parseSqlDate(String s) {
 		if (s == null || s.isBlank()) return null;
+		String trimmed = s.trim();
+
+		// Excel date serial number — numeric string with no separators
+		if (trimmed.matches("\\d{4,6}(\\.\\d+)?")) {
+			try {
+				double serial = Double.parseDouble(trimmed);
+				// Excel epoch: Dec 30 1899; POI's DateUtil handles the 1900 leap-year bug
+				java.util.Date javaDate = org.apache.poi.ss.usermodel.DateUtil.getJavaDate(serial);
+				return new java.sql.Date(javaDate.getTime());
+			} catch (Exception ignored) { }
+		}
+
 		String[] formats = { "dd/MM/yyyy", "dd-MM-yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "dd.MM.yyyy" };
 		for (String fmt : formats) {
 			try {
 				java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat(fmt);
 				sdf.setLenient(false);
-				return new java.sql.Date(sdf.parse(s.trim()).getTime());
+				return new java.sql.Date(sdf.parse(trimmed).getTime());
 			} catch (java.text.ParseException ignored) { }
 		}
 		System.err.println("Could not parse date: " + s);

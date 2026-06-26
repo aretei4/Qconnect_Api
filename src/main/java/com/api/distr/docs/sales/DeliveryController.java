@@ -23,7 +23,9 @@ import com.api.distr.docs.sales.dto.SalesEntryDto;
 import com.api.distr.docs.sales.dto.SmartRouteAssignItem;
 import com.api.distr.docs.sales.repo.DeliveryStatusService;
 import com.api.distr.docs.sales.repo.DeliveryMapService;
+import com.api.distr.docs.sales.repo.DeliveryViolationService;
 import com.api.distr.docs.sales.dto.DeliveryMapDTO;
+import com.api.distr.docs.sales.dto.DeliveryViolationDTO;
 
 @RestController
 @RequestMapping("/api/delivery")
@@ -39,6 +41,9 @@ public class DeliveryController {
 
     @Autowired
     private DeliveryMapService mapService;
+
+    @Autowired
+    private DeliveryViolationService violationService;
 
     // ── Auth ──────────────────────────────────────────────────────────────────
     @PostMapping("/login")
@@ -62,6 +67,24 @@ public class DeliveryController {
                 LocalDate.parse(toDate,   fmt));
     }
 
+    /**
+     * GET /api/delivery/violations?fromDate=dd/MM/yyyy&toDate=dd/MM/yyyy
+     *
+     * Compares actual delivery location (delivery_status.lat/lon) against the
+     * customer's registered address (customer_details.lat/lon).
+     * Other details (invoice, net value) join from stage_sales_entery.
+     * Falls back to sample-violations.json when no live data exists.
+     */
+    @GetMapping("/violations")
+    public List<DeliveryViolationDTO> getViolations(
+            @RequestParam String fromDate,
+            @RequestParam String toDate) {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        return violationService.getViolations(
+                LocalDate.parse(fromDate, fmt),
+                LocalDate.parse(toDate,   fmt));
+    }
+
     @GetMapping("/map")
     public List<DeliveryMapDTO> getMapPoints(
             @RequestParam String fromDate,
@@ -76,11 +99,15 @@ public class DeliveryController {
     @PostMapping("/delivery-status")
     public ResponseEntity<?> upsertDelivery(@RequestBody DeliveryStatus deliveryStatus) {
         try {
-            String msg = deliveryService.upsertByPicklistNo(deliveryStatus);
+            String msg = deliveryService.upsertByDireId(deliveryStatus);
             return ResponseEntity.ok(new ApiResponse(true, msg));
-        } catch (RuntimeException ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse(false, ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse(false, ex.getMessage() != null
+                            ? ex.getMessage() : ex.getClass().getSimpleName()));
         }
     }
 
@@ -91,6 +118,15 @@ public class DeliveryController {
     }
 
     // ── Agents ────────────────────────────────────────────────────────────────
+
+    /** Check if any DAN is pending before allowing dispatch. */
+    @GetMapping("/pending-dan-check")
+    public ResponseEntity<?> pendingDanCheck() {
+        int count = deliveryService.countPendingDans();
+        if (count > 0)
+            return ResponseEntity.ok(new ApiResponse(false, count + " pending DAN(s) must be closed before dispatching."));
+        return ResponseEntity.ok(new ApiResponse(true, "ok"));
+    }
 
     /** Original assign — used by SalesDetail page (single agent, picklist list, car info) */
     @PostMapping("/assign")
@@ -147,6 +183,18 @@ public class DeliveryController {
     @DeleteMapping("/delete/{picklistNo}")
     public ResponseEntity<?> deleteDelivery(@PathVariable String picklistNo) {
         return ResponseEntity.ok(new ApiResponse(true, "" + deliveryService.deleteByPicklistNo(picklistNo)));
+    }
+
+    /** Delete delivery assignment by dire_id (stage_sales_entery.dire_id). */
+    @DeleteMapping("/delete/dire/{direId}")
+    public ResponseEntity<?> deleteDeliveryBySalesId(@PathVariable Long direId) {
+        try {
+            int rows = deliveryService.deleteByDireId(direId);
+            return ResponseEntity.ok(new ApiResponse(true, "" + rows));
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse(false, "Delete failed: " + e.getMessage()));
+        }
     }
 
     // ── OTP ───────────────────────────────────────────────────────────────────

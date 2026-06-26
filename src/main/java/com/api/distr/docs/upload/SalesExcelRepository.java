@@ -13,7 +13,7 @@ public class SalesExcelRepository {
     }
 
     private static final String SQL_CHECK =
-            "SELECT COUNT(*) FROM stage_sales_entery WHERE picklist_no = ?";
+            "SELECT COUNT(*) FROM stage_sales_entery WHERE sales_order_no = ?";
 
     private static final String SQL_INSERT =
             "INSERT INTO stage_sales_entery (" +
@@ -24,14 +24,14 @@ public class SalesExcelRepository {
 
     private static final String SQL_UPDATE =
             "UPDATE stage_sales_entery SET " +
-                    "sales_order_no=?, customer_no=?, cust_desc=?, sales_rep_no=?, " +
+                    "picklist_no=?, customer_no=?, cust_desc=?, sales_rep_no=?, " +
                     "sales_rep_name=?, route=?, route_name=?, billing_date=?, warehouse=?, " +
                     "net_value=?, company_name=?, update_date=CURRENT_DATE " +
-                    "WHERE picklist_no=?";
+                    "WHERE sales_order_no=?";
     
 
-    public int findCountByPicklist(String picklistNo) {
-        return jdbc.queryForObject(SQL_CHECK, Integer.class, picklistNo);
+    public int findCountBySalesOrder(String salesOrderNo) {
+        return jdbc.queryForObject(SQL_CHECK, Integer.class, salesOrderNo);
     }
 
     public void insert(SalesRecord r) {
@@ -56,7 +56,7 @@ public class SalesExcelRepository {
     public void update(SalesRecord r) {
         jdbc.update(con -> {
             var ps = con.prepareStatement(SQL_UPDATE);
-            ps.setString(1, r.getSalesOrderNo());
+            ps.setString(1, r.getPicklistNo());    // SET picklist_no
             ps.setString(2, r.getCustomerNo());
             ps.setString(3, r.getCustDesc());
             ps.setString(4, r.getSalesRepNo());
@@ -67,7 +67,7 @@ public class SalesExcelRepository {
             ps.setString(9, r.getWarehouse());
             ps.setDouble(10, r.getNetValue());
             ps.setString(11, r.getCompanyName());
-            ps.setString(12, r.getPicklistNo());
+            ps.setString(12, r.getSalesOrderNo()); // WHERE sales_order_no
             return ps;
         });
     }

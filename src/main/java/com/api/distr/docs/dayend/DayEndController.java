@@ -50,6 +50,13 @@ public class DayEndController {
         try {
             approvalService.createDayEnd(dto);
             return ResponseEntity.ok(Map.of("success", true, "message", "Day End submitted successfully"));
+        } catch (IllegalStateException e) {
+            // Validation failure: already pending OR items still pending
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("success", false, "message", e.getMessage()));
@@ -68,6 +75,16 @@ public class DayEndController {
     public ResponseEntity<String> reject(@RequestBody DayEndDto dto) {
         approvalService.rejectDayEndById(dto);
         return ResponseEntity.ok("DayEnd Rejected");
+    }
+
+    // 🟢 ONLINE AGENTS — agents active today
+    @GetMapping("/online-agents")
+    public ResponseEntity<List<OnlineAgentDto>> getOnlineAgents() {
+        try {
+            return ResponseEntity.ok(approvalService.getOnlineAgents());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     // 🔍 LIST
@@ -116,14 +133,14 @@ public class DayEndController {
         }
     }
 
-    /** Update payment amount, mode, and delivery status for a single picklist. */
-    @PutMapping("/picklist/{picklistNo}")
+    /** Update payment amount, mode, and delivery status for a single dire_id. */
+    @PutMapping("/picklist/dire/{direId}")
     public ResponseEntity<?> updatePicklist(
-            @PathVariable String picklistNo,
+            @PathVariable Long direId,
             @RequestBody PicklistUpdateRequest req) {
         try {
-            picklistService.updatePicklistPayment(picklistNo, req);
-            return ResponseEntity.ok("Picklist updated successfully");
+            picklistService.updatePicklistPayment(direId, req);
+            return ResponseEntity.ok("Updated successfully");
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(ex.getMessage());
         } catch (Exception ex) {
@@ -132,11 +149,11 @@ public class DayEndController {
         }
     }
 
-    /** Remove a picklist from delivery assignments. */
-    @DeleteMapping("/picklist/{picklistNo}")
-    public ResponseEntity<?> deletePicklist(@PathVariable String picklistNo) {
+    /** Remove a delivery assignment by dire_id. */
+    @DeleteMapping("/picklist/dire/{direId}")
+    public ResponseEntity<?> deletePicklist(@PathVariable Long direId) {
         try {
-            int rows = picklistService.deletePicklist(picklistNo);
+            int rows = picklistService.deletePicklist(direId);
             return ResponseEntity.ok(rows + " record(s) deleted");
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

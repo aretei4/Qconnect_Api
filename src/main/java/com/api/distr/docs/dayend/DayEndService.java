@@ -98,11 +98,12 @@ public class DayEndService {
                 ds.payment_amount,
                 ds.payment_mode,
                 ds.reason,
+                COALESCE(ds.dire_id, 0)                             AS dire_id,
+                COALESCE(sse.sales_order_no, '')                    AS invoice_no,
                 COALESCE(sse.cust_desc, '')                         AS cust_desc,
                 COALESCE(CAST(sse.net_value AS double precision), 0) AS net_value
             FROM delivery_status ds
-            LEFT JOIN stage_sales_entery sse
-                   ON TRIM(LOWER(sse.picklist_no)) = TRIM(LOWER(ds.picklist_no))
+            LEFT JOIN stage_sales_entery sse ON sse.dire_id = ds.dire_id
             WHERE ds.delivery_date::date = ?
         """);
 
@@ -121,6 +122,8 @@ public class DayEndService {
                 picklistParams.toArray(),
                 (rs, rowNum) -> {
                     DayEndPicklistDetail d = new DayEndPicklistDetail();
+                    d.setDireId(rs.getLong("dire_id"));
+                    d.setInvoiceNo(rs.getString("invoice_no"));
                     d.setPicklistNo(rs.getString("picklist_no"));
                     d.setCustDesc(rs.getString("cust_desc"));
                     d.setDelivered(rs.getBoolean("delivered"));

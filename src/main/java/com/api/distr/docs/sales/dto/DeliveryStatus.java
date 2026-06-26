@@ -24,6 +24,7 @@ public class DeliveryStatus {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private Long    delivery_id;
+    private Long    direId;
     private boolean delivered;
     private boolean otp;
     private String  picklistNo;
@@ -78,6 +79,9 @@ public class DeliveryStatus {
 
     public Long getDelivery_id() { return delivery_id; }
     public void setDelivery_id(Long delivery_id) { this.delivery_id = delivery_id; }
+
+    public Long getDireId() { return direId; }
+    public void setDireId(Long direId) { this.direId = direId; }
 
     public boolean isDelivered() { return delivered; }
     public void setDelivered(boolean delivered) { this.delivered = delivered; }

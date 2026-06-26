@@ -61,4 +61,20 @@ public class DayEndResponseDto {
 
     public LocalDateTime getApprovedAt() { return approvedAt; }
     public void setApprovedAt(LocalDateTime approvedAt) { this.approvedAt = approvedAt; }
+
+    /**
+     * Computed Day End code: DE-{YYYY}-{MMDD}-{NNN}
+     * e.g. dayendId=23, deliveryDate=23-05-2026  →  DE-2026-0523-023
+     * Jackson serialises this getter automatically as "dayEndCode".
+     */
+    public String getDayEndCode() {
+        if (dayendId == null) return null;
+        if (deliveryDate != null) {
+            String mmdd = String.format("%02d%02d",
+                    deliveryDate.getMonthValue(), deliveryDate.getDayOfMonth());
+            return String.format("DE-%d-%s-%03d",
+                    deliveryDate.getYear(), mmdd, dayendId);
+        }
+        return String.format("DE-%03d", dayendId);
+    }
 }

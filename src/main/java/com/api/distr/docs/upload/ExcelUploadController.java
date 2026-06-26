@@ -80,15 +80,22 @@ public class ExcelUploadController {
                 return ResponseEntity.badRequest().body(
                         Map.of("success", false, "error", "No column mappings configured for template type: " + type));
 
+            List<String> errors = new ArrayList<>();
             if (temTyple.equalsIgnoreCase("customer")) {
                 tempservice.excelMaster(file, mappings, "C");
             } else if (temTyple.equalsIgnoreCase("delivery")) {
                 tempservice.excelMaster(file, mappings, "D");
             } else {
-                tempservice.importExcel(file, mappings, companyName);
+                errors = tempservice.importExcel(file, mappings, companyName);
             }
 
-            return ResponseEntity.ok(Map.of("success", true, "message", "Excel uploaded successfully"));
+            if (!errors.isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                        "success", false,
+                        "errors",  errors,
+                        "message", "Upload completed with " + errors.size() + " error(s)"));
+            }
+            return ResponseEntity.ok(Map.of("success", true, "errors", List.of(), "message", "Excel uploaded successfully"));
 
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));

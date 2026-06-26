@@ -24,7 +24,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -45,12 +44,6 @@ class DayEndControllerTest {
     @Autowired
     ObjectMapper objectMapper;
 
-    // ── Security beans — must be mocked so JwtAuthFilter can be constructed ──
-    // UserJwtService uses @Value("${onlyoffice.jwt.secret}") which is not in
-    // the test context. @MockBean replaces it with a Mockito mock (no @Value
-    // injection needed). JwtAuthFilter then calls chain.doFilter normally since
-    // isTokenValid() returns false by default, and anyRequest().permitAll() lets
-    // all test requests through.
     @MockBean
     UserJwtService userJwtService;
 
@@ -65,9 +58,9 @@ class DayEndControllerTest {
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
-    private SalesEntryDto samplePicklist(String picklistNo) {
+    private SalesEntryDto samplePicklist(long direId) {
         SalesEntryDto dto = new SalesEntryDto();
-        dto.setPicklistNo(picklistNo);
+        dto.setDireId(direId);
         dto.setCustomerNo("C001");
         dto.setCustDesc("Test Customer");
         dto.setNetValue("1000.0");
@@ -110,7 +103,8 @@ class DayEndControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(dto)))
                     .andExpect(status().isOk())
-                    .andExpect(content().string("DayEnd Started"));
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.message").value("Day started successfully"));
 
             verify(approvalService).startDayEnd(any(DayEndDto.class));
         }
@@ -305,14 +299,14 @@ class DayEndControllerTest {
         void returnsPicklistsForDayendId() throws Exception {
             when(picklistService.getPicklistsByDayendId(48L))
                     .thenReturn(List.of(
-                            samplePicklist("E587P001"),
-                            samplePicklist("E587P002")
+                            samplePicklist(101L),
+                            samplePicklist(102L)
                     ));
 
             mvc.perform(get("/api/dayend/picklists/48"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$", hasSize(2)))
-                    .andExpect(jsonPath("$[0].picklistNo").value("E587P001"))
+                    .andExpect(jsonPath("$[0].direId").value(101))
                     .andExpect(jsonPath("$[0].delivered").value(true))
                     .andExpect(jsonPath("$[0].paymentAmount").value(1000.0))
                     .andExpect(jsonPath("$[0].paymentMode").value("CASH:1000.0"))
@@ -343,11 +337,11 @@ class DayEndControllerTest {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // PUT /api/dayend/picklist/{picklistNo}
+    // PUT /api/dayend/picklist/dire/{direId}
     // ══════════════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("PUT /picklist/{picklistNo}")
+    @DisplayName("PUT /picklist/dire/{direId}")
     class UpdatePicklistEndpointTests {
 
         private PicklistUpdateRequest validRequest() {
@@ -362,25 +356,25 @@ class DayEndControllerTest {
         @Test
         @DisplayName("200 OK when update succeeds")
         void updateReturns200() throws Exception {
-            mvc.perform(put("/api/dayend/picklist/E587P001")
+            mvc.perform(put("/api/dayend/picklist/dire/101")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest())))
                     .andExpect(status().isOk())
-                    .andExpect(content().string("Picklist updated successfully"));
+                    .andExpect(content().string("Updated successfully"));
 
-            verify(picklistService).updatePicklistPayment(eq("E587P001"), any(PicklistUpdateRequest.class));
+            verify(picklistService).updatePicklistPayment(eq(101L), any(PicklistUpdateRequest.class));
         }
 
         @Test
         @DisplayName("400 when service throws IllegalArgumentException (negative amount)")
         void updateReturns400OnValidationError() throws Exception {
             doThrow(new IllegalArgumentException("Payment amount cannot be negative"))
-                    .when(picklistService).updatePicklistPayment(anyString(), any());
+                    .when(picklistService).updatePicklistPayment(anyLong(), any());
 
             PicklistUpdateRequest req = new PicklistUpdateRequest();
             req.setPaymentAmount(-100.0);
 
-            mvc.perform(put("/api/dayend/picklist/E587P001")
+            mvc.perform(put("/api/dayend/picklist/dire/101")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isBadRequest())
@@ -391,9 +385,9 @@ class DayEndControllerTest {
         @DisplayName("500 when service throws generic exception")
         void updateReturns500OnGenericError() throws Exception {
             doThrow(new RuntimeException("Unexpected DB error"))
-                    .when(picklistService).updatePicklistPayment(anyString(), any());
+                    .when(picklistService).updatePicklistPayment(anyLong(), any());
 
-            mvc.perform(put("/api/dayend/picklist/E587P001")
+            mvc.perform(put("/api/dayend/picklist/dire/101")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest())))
                     .andExpect(status().isInternalServerError())
@@ -401,14 +395,14 @@ class DayEndControllerTest {
         }
 
         @Test
-        @DisplayName("passes picklistNo from URL path to service correctly")
-        void passesPicklistNoFromPath() throws Exception {
-            mvc.perform(put("/api/dayend/picklist/XYZ9999")
+        @DisplayName("passes direId from URL path to service correctly")
+        void passesDireIdFromPath() throws Exception {
+            mvc.perform(put("/api/dayend/picklist/dire/999")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest())))
                     .andExpect(status().isOk());
 
-            verify(picklistService).updatePicklistPayment(eq("XYZ9999"), any());
+            verify(picklistService).updatePicklistPayment(eq(999L), any());
         }
 
         @Test
@@ -419,41 +413,41 @@ class DayEndControllerTest {
             req.setPaymentAmount(0.0);
             req.setReason("Customer not available");
 
-            mvc.perform(put("/api/dayend/picklist/E587P002")
+            mvc.perform(put("/api/dayend/picklist/dire/102")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isOk());
 
-            verify(picklistService).updatePicklistPayment(eq("E587P002"), any());
+            verify(picklistService).updatePicklistPayment(eq(102L), any());
         }
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // DELETE /api/dayend/picklist/{picklistNo}
+    // DELETE /api/dayend/picklist/dire/{direId}
     // ══════════════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("DELETE /picklist/{picklistNo}")
+    @DisplayName("DELETE /picklist/dire/{direId}")
     class DeletePicklistEndpointTests {
 
         @Test
         @DisplayName("200 OK with deleted row count on success")
         void deleteReturns200() throws Exception {
-            when(picklistService.deletePicklist("E587P001")).thenReturn(1);
+            when(picklistService.deletePicklist(101L)).thenReturn(1);
 
-            mvc.perform(delete("/api/dayend/picklist/E587P001"))
+            mvc.perform(delete("/api/dayend/picklist/dire/101"))
                     .andExpect(status().isOk())
                     .andExpect(content().string("1 record(s) deleted"));
 
-            verify(picklistService).deletePicklist("E587P001");
+            verify(picklistService).deletePicklist(101L);
         }
 
         @Test
-        @DisplayName("200 with 0 records deleted when picklist not found")
+        @DisplayName("200 with 0 records deleted when not found")
         void deleteReturns0WhenNotFound() throws Exception {
-            when(picklistService.deletePicklist("UNKNOWN")).thenReturn(0);
+            when(picklistService.deletePicklist(999L)).thenReturn(0);
 
-            mvc.perform(delete("/api/dayend/picklist/UNKNOWN"))
+            mvc.perform(delete("/api/dayend/picklist/dire/999"))
                     .andExpect(status().isOk())
                     .andExpect(content().string("0 record(s) deleted"));
         }
@@ -461,10 +455,10 @@ class DayEndControllerTest {
         @Test
         @DisplayName("500 when service throws exception")
         void deleteReturns500OnError() throws Exception {
-            when(picklistService.deletePicklist(anyString()))
+            when(picklistService.deletePicklist(anyLong()))
                     .thenThrow(new RuntimeException("FK constraint violation"));
 
-            mvc.perform(delete("/api/dayend/picklist/E587P001"))
+            mvc.perform(delete("/api/dayend/picklist/dire/101"))
                     .andExpect(status().isInternalServerError())
                     .andExpect(content().string(containsString("Delete failed")));
         }

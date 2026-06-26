@@ -4,9 +4,12 @@ import java.sql.Date;
 
 public class SalesEntryDto {
 
+    private Long    direId;
+    private String  invoiceNo;      // stage_sales_entery.sales_order_no
     private String  picklistNo;
     private String  customerNo;
     private String  custDesc;
+    private String  custMobile;
     private String  billingDate;
     private String  netValue;
     private String  updateDate;
@@ -18,14 +21,23 @@ public class SalesEntryDto {
     private String  reason;
     private int     assignStatus;   // 0=PENDING, 1=FAILED, 2=DELIVERED
 
+    public Long    getDireId()     { return direId; }
+    public void    setDireId(Long direId)           { this.direId = direId; }
+
+    public String  getInvoiceNo()   { return invoiceNo; }
+    public void    setInvoiceNo(String invoiceNo)     { this.invoiceNo = invoiceNo; }
+
     public String  getPicklistNo()  { return picklistNo; }
-    public void    setPicklistNo(String picklistNo)  { this.picklistNo = picklistNo; }
+    public void    setPicklistNo(String picklistNo)   { this.picklistNo = picklistNo; }
 
     public String  getCustomerNo()  { return customerNo; }
     public void    setCustomerNo(String customerNo)  { this.customerNo = customerNo; }
 
     public String  getCustDesc()    { return custDesc; }
     public void    setCustDesc(String custDesc)      { this.custDesc = custDesc; }
+
+    public String  getCustMobile()  { return custMobile; }
+    public void    setCustMobile(String custMobile)  { this.custMobile = custMobile; }
 
     public String  getBillingDate() { return billingDate; }
     public void    setBillingDate(String billingDate){ this.billingDate = billingDate; }

@@ -2,6 +2,8 @@ package com.api.distr.docs.dayend;
 
 import com.api.distr.docs.sales.dto.PicklistUpdateRequest;
 import com.api.distr.docs.sales.dto.SalesEntryDto;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -14,6 +16,8 @@ import java.util.List;
  */
 @Service
 public class DayEndPicklistService {
+
+    private static final Logger log = LoggerFactory.getLogger(DayEndPicklistService.class);
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -28,7 +32,8 @@ public class DayEndPicklistService {
      */
     private static final String SELECT_PICKLISTS_BY_DAYEND = """
             SELECT
-                TRIM(ds.picklist_no)                                     AS picklistNo,
+                ds.dire_id                                               AS direId,
+                COALESCE(s.sales_order_no, '')                           AS invoiceNo,
                 COALESCE(s.customer_no, '')                              AS customerNo,
                 COALESCE(s.cust_desc,   '')                              AS custDesc,
                 COALESCE(CAST(s.net_value AS DOUBLE PRECISION), 0.0)     AS netValue,
@@ -39,13 +44,14 @@ public class DayEndPicklistService {
                 ds.reason                                                AS reason
             FROM dayend_approval dea
             INNER JOIN delivery_status ds
-                ON  ds.delivery_id = dea.delivery_id
+                ON  ds.delivery_id      = dea.delivery_id
+                AND ds.delivery_date::date = dea.delivery_date
             LEFT JOIN stage_sales_entery s
-                ON  TRIM(s.picklist_no) = TRIM(ds.picklist_no)
+                ON  s.dire_id = ds.dire_id
             LEFT JOIN delivery_assignments da
-                ON  TRIM(da.picklist_no) = TRIM(ds.picklist_no)
+                ON  da.dire_id = ds.dire_id
             WHERE dea.id = ?
-            ORDER BY TRIM(ds.picklist_no)
+            ORDER BY ds.dire_id
             """;
 
     /**
@@ -53,23 +59,32 @@ public class DayEndPicklistService {
      * with full payment and delivery-status detail. Used by the Day-End management screen.
      */
     public List<SalesEntryDto> getPicklistsByDayendId(Long dayendId) {
-        return jdbcTemplate.query(
-                SELECT_PICKLISTS_BY_DAYEND,
-                new Object[]{dayendId},
-                (rs, rowNum) -> {
-                    SalesEntryDto dto = new SalesEntryDto();
-                    dto.setPicklistNo(rs.getString("picklistNo"));
-                    dto.setCustomerNo(rs.getString("customerNo"));
-                    dto.setCustDesc(rs.getString("custDesc"));
-                    dto.setNetValue("" + rs.getDouble("netValue"));
-                    dto.setAssignStatus(rs.getInt("assignStatus"));
-                    dto.setDelivered(rs.getBoolean("delivered"));
-                    dto.setPaymentAmount(rs.getDouble("paymentAmount"));
-                    dto.setPaymentMode(rs.getString("paymentMode"));
-                    dto.setReason(rs.getString("reason"));
-                    return dto;
-                }
-        );
+        log.info("getPicklistsByDayendId: dayendId={}", dayendId);
+        try {
+            List<SalesEntryDto> result = jdbcTemplate.query(
+                    SELECT_PICKLISTS_BY_DAYEND,
+                    new Object[]{dayendId},
+                    (rs, rowNum) -> {
+                        SalesEntryDto dto = new SalesEntryDto();
+                        dto.setDireId(rs.getLong("direId"));
+                        dto.setInvoiceNo(rs.getString("invoiceNo"));
+                        dto.setCustomerNo(rs.getString("customerNo"));
+                        dto.setCustDesc(rs.getString("custDesc"));
+                        dto.setNetValue("" + rs.getDouble("netValue"));
+                        dto.setAssignStatus(rs.getInt("assignStatus"));
+                        dto.setDelivered(rs.getBoolean("delivered"));
+                        dto.setPaymentAmount(rs.getDouble("paymentAmount"));
+                        dto.setPaymentMode(rs.getString("paymentMode"));
+                        dto.setReason(rs.getString("reason"));
+                        return dto;
+                    }
+            );
+            log.info("getPicklistsByDayendId: returned {} picklists for dayendId={}", result.size(), dayendId);
+            return result;
+        } catch (Exception e) {
+            log.error("getPicklistsByDayendId failed: dayendId={}, error={}", dayendId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**
@@ -77,70 +92,77 @@ public class DayEndPicklistService {
      * Uses check-then-update/insert to avoid needing a UNIQUE constraint on picklist_no.
      * delivery_id is looked up from delivery_assignments so the INSERT is valid.
      */
-    public void updatePicklistPayment(String picklistNo, PicklistUpdateRequest req) {
-        if (picklistNo == null || picklistNo.isBlank())
-            throw new IllegalArgumentException("Picklist number is required");
+    public void updatePicklistPayment(Long direId, PicklistUpdateRequest req) {
+        if (direId == null || direId <= 0)
+            throw new IllegalArgumentException("direId is required");
         if (req.getPaymentAmount() < 0)
             throw new IllegalArgumentException("Payment amount cannot be negative");
 
-        // 1. Check if a delivery_status row already exists for this picklist
-        Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM delivery_status WHERE picklist_no = ?",
-                Integer.class, picklistNo);
+        log.info("updatePicklistPayment: direId={}, delivered={}, amount={}",
+                direId, req.isDelivered(), req.getPaymentAmount());
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM delivery_status WHERE dire_id = ?",
+                    Integer.class, direId);
 
-        if (count != null && count > 0) {
-            // UPDATE existing row
-            jdbcTemplate.update("""
-                    UPDATE delivery_status
-                    SET delivered      = ?,
-                        payment_amount = ?,
-                        payment_mode   = ?,
-                        reason         = ?
-                    WHERE picklist_no  = ?
-                    """,
-                    req.isDelivered(),
-                    req.getPaymentAmount(),
-                    req.getPaymentMode(),
-                    req.getReason(),
-                    picklistNo);
-        } else {
-            // Fetch delivery_id from delivery_assignments (needed for NOT NULL column)
-            Long deliveryId = null;
-            try {
-                deliveryId = jdbcTemplate.queryForObject(
-                        "SELECT delivery_boy_id::bigint FROM delivery_assignments WHERE picklist_no = ?",
-                        Long.class, picklistNo);
-            } catch (Exception ignored) { /* delivery_boy_id may not be numeric — leave null */ }
+            if (count != null && count > 0) {
+                jdbcTemplate.update("""
+                        UPDATE delivery_status
+                        SET delivered      = ?,
+                            payment_amount = ?,
+                            payment_mode   = ?,
+                            reason         = ?
+                        WHERE dire_id      = ?
+                        """,
+                        req.isDelivered(), req.getPaymentAmount(),
+                        req.getPaymentMode(), req.getReason(), direId);
+            } else {
+                Long deliveryId = null;
+                try {
+                    deliveryId = jdbcTemplate.queryForObject(
+                            "SELECT delivery_boy_id::bigint FROM delivery_assignments WHERE dire_id = ?",
+                            Long.class, direId);
+                } catch (Exception ignored) {
+                    log.warn("updatePicklistPayment: could not resolve delivery_id for direId={}", direId);
+                }
+                jdbcTemplate.update("""
+                        INSERT INTO delivery_status
+                            (dire_id, delivery_id, delivered, payment_amount, payment_mode, reason)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        """,
+                        direId, deliveryId,
+                        req.isDelivered(), req.getPaymentAmount(),
+                        req.getPaymentMode(), req.getReason());
+            }
 
-            jdbcTemplate.update("""
-                    INSERT INTO delivery_status
-                        (delivery_id, picklist_no, delivered, payment_amount, payment_mode, reason)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    """,
-                    deliveryId,
-                    picklistNo,
-                    req.isDelivered(),
-                    req.getPaymentAmount(),
-                    req.getPaymentMode(),
-                    req.getReason());
+            int status = req.isDelivered() ? 2 : 1;
+            jdbcTemplate.update(
+                    "UPDATE delivery_assignments SET status = ? WHERE dire_id = ?",
+                    status, direId);
+
+            log.info("updatePicklistPayment: completed for direId={}", direId);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("updatePicklistPayment failed: direId={}, error={}", direId, e.getMessage(), e);
+            throw e;
         }
-
-        // 2. Sync delivery_assignments.status  (2=DELIVERED, 1=FAILED)
-        int status = req.isDelivered() ? 2 : 1;
-        jdbcTemplate.update(
-                "UPDATE delivery_assignments SET status = ? WHERE picklist_no = ?",
-                status, picklistNo);
     }
 
     /**
      * Deletes a picklist from delivery_assignments (and cascades to delivery_status
      * if ON DELETE CASCADE is set, otherwise cleans up separately).
      */
-    public int deletePicklist(String picklistNo) {
-        // Clean up delivery_status first (no cascade assumption)
-        jdbcTemplate.update(
-                "DELETE FROM delivery_status WHERE picklist_no = ?", picklistNo);
-        return jdbcTemplate.update(
-                "DELETE FROM delivery_assignments WHERE picklist_no = ?", picklistNo);
+    public int deletePicklist(Long direId) {
+        log.info("deletePicklist: direId={}", direId);
+        try {
+            jdbcTemplate.update("DELETE FROM delivery_status WHERE dire_id = ?", direId);
+            int rows = jdbcTemplate.update("DELETE FROM delivery_assignments WHERE dire_id = ?", direId);
+            log.info("deletePicklist: deleted {} assignment row(s) for direId={}", rows, direId);
+            return rows;
+        } catch (Exception e) {
+            log.error("deletePicklist failed: direId={}, error={}", direId, e.getMessage(), e);
+            throw e;
+        }
     }
 }

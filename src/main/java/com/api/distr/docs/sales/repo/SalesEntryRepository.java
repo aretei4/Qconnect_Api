@@ -27,10 +27,15 @@ public class SalesEntryRepository {
     }
 
     public int deleteByPicklistNos(List<String> picklistNos) {
-        // Build  DELETE ... WHERE picklist_no IN (?,?,?)
         String placeholders = String.join(",", java.util.Collections.nCopies(picklistNos.size(), "?"));
         String sql = "DELETE FROM stage_sales_entery WHERE picklist_no IN (" + placeholders + ")";
         return jdbcTemplate.update(sql, picklistNos.toArray());
+    }
+
+    public int deleteByDireIds(List<Long> direIds) {
+        String placeholders = String.join(",", java.util.Collections.nCopies(direIds.size(), "?"));
+        String sql = "DELETE FROM stage_sales_entery WHERE dire_id IN (" + placeholders + ")";
+        return jdbcTemplate.update(sql, direIds.toArray());
     }
 
     public List<SalesEntry> findByFilters(Map<String, String> filters) {
@@ -58,6 +63,7 @@ public class SalesEntryRepository {
         @Override
         public SalesEntry mapRow(ResultSet rs, int rowNum) throws SQLException {
             SalesEntry entry = new SalesEntry();
+            entry.setDireId(rs.getLong("dire_id"));
             entry.setPicklistNo(rs.getString("Picklist_No"));
             entry.setSalesOrderNo(rs.getString("Sales_Order_no"));
             entry.setCustomerNo(rs.getString("Customer_no"));

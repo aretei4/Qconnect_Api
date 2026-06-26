@@ -1,31 +1,22 @@
 package com.api.distr.docs.warehouse;
 
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 
-import java.sql.PreparedStatement;
-import java.sql.Statement;
 
-/**
- * CRUD service for warehouse_master.
- *
- * DDL (run once):
- *   CREATE TABLE warehouse_master (
- *       id      BIGSERIAL PRIMARY KEY,
- *       name    VARCHAR(100) NOT NULL,
- *       address TEXT,
- *       lat     DOUBLE PRECISION,
- *       lon     DOUBLE PRECISION,
- *       active  BOOLEAN DEFAULT TRUE
- *   );
- */
 @Service
 public class WarehouseService {
+
+    private static final Logger log = LoggerFactory.getLogger(WarehouseService.class);
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -34,8 +25,9 @@ public class WarehouseService {
 
     /** Returns all active warehouses that have valid coordinates. */
     public List<WarehouseDTO> getActiveWarehouses() {
+        log.info("getActiveWarehouses: fetching active warehouses");
         try {
-            return jdbcTemplate.query("""
+            List<WarehouseDTO> result = jdbcTemplate.query("""
                     SELECT id, name, address, lat, lon, active
                     FROM warehouse_master
                     WHERE active = true
@@ -43,20 +35,27 @@ public class WarehouseService {
                       AND lon IS NOT NULL
                     ORDER BY id
                     """, this::mapRow);
+            log.info("getActiveWarehouses: returned {} warehouses", result.size());
+            return result;
         } catch (Exception e) {
+            log.error("getActiveWarehouses failed, using static fallback: error={}", e.getMessage(), e);
             return staticFallback();
         }
     }
 
     /** Returns all warehouses (active + inactive) — for management screen. */
     public List<WarehouseDTO> getAllWarehouses() {
+        log.info("getAllWarehouses: fetching all warehouses");
         try {
-            return jdbcTemplate.query("""
+            List<WarehouseDTO> result = jdbcTemplate.query("""
                     SELECT id, name, address, lat, lon, active
                     FROM warehouse_master
                     ORDER BY id
                     """, this::mapRow);
+            log.info("getAllWarehouses: returned {} warehouses", result.size());
+            return result;
         } catch (Exception e) {
+            log.error("getAllWarehouses failed, using static fallback: error={}", e.getMessage(), e);
             return staticFallback();
         }
     }
@@ -65,54 +64,85 @@ public class WarehouseService {
 
     public WarehouseDTO createWarehouse(WarehouseDTO dto) {
         validate(dto);
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbcTemplate.update(con -> {
-            PreparedStatement ps = con.prepareStatement("""
-                    INSERT INTO warehouse_master (name, address, lat, lon, active)
-                    VALUES (?, ?, ?, ?, true)
-                    """, Statement.RETURN_GENERATED_KEYS);
-            ps.setString(1, dto.name.trim());
-            ps.setString(2, dto.address != null ? dto.address.trim() : "");
-            ps.setDouble(3, dto.lat);
-            ps.setDouble(4, dto.lon);
-            return ps;
-        }, keyHolder);
+        log.info("createWarehouse: name={}, lat={}, lon={}", dto.name, dto.lat, dto.lon);
+        try {
+            KeyHolder keyHolder = new GeneratedKeyHolder();
+            jdbcTemplate.update(con -> {
+                PreparedStatement ps = con.prepareStatement("""
+                        INSERT INTO warehouse_master (name, address, lat, lon, active)
+                        VALUES (?, ?, ?, ?, true)
+                        """, Statement.RETURN_GENERATED_KEYS);
+                ps.setString(1, dto.name.trim());
+                ps.setString(2, dto.address != null ? dto.address.trim() : "");
+                ps.setDouble(3, dto.lat);
+                ps.setDouble(4, dto.lon);
+                return ps;
+            }, keyHolder);
 
-        Number key = keyHolder.getKey();
-        dto.id     = key != null ? key.longValue() : null;
-        dto.active = true;
-        return dto;
+            Number key = keyHolder.getKey();
+            dto.id     = key != null ? key.longValue() : null;
+            dto.active = true;
+            log.info("createWarehouse: created warehouse id={}", dto.id);
+            return dto;
+        } catch (Exception e) {
+            log.error("createWarehouse failed: name={}, error={}", dto.name, e.getMessage(), e);
+            throw e;
+        }
     }
 
     // ── UPDATE ────────────────────────────────────────────────────────────────
 
     public void updateWarehouse(Long id, WarehouseDTO dto) {
         validate(dto);
-        int rows = jdbcTemplate.update("""
-                UPDATE warehouse_master
-                SET name    = ?,
-                    address = ?,
-                    lat     = ?,
-                    lon     = ?,
-                    active  = ?
-                WHERE id = ?
-                """,
-                dto.name.trim(),
-                dto.address != null ? dto.address.trim() : "",
-                dto.lat,
-                dto.lon,
-                dto.active,
-                id);
+        log.info("updateWarehouse: id={}, name={}", id, dto.name);
+        try {
+            int rows = jdbcTemplate.update("""
+                    UPDATE warehouse_master
+                    SET name    = ?,
+                        address = ?,
+                        lat     = ?,
+                        lon     = ?,
+                        active  = ?
+                    WHERE id = ?
+                    """,
+                    dto.name.trim(),
+                    dto.address != null ? dto.address.trim() : "",
+                    dto.lat,
+                    dto.lon,
+                    dto.active,
+                    id);
 
-        if (rows == 0) throw new RuntimeException("Warehouse not found: " + id);
+            if (rows == 0) {
+                log.warn("updateWarehouse: warehouse not found id={}", id);
+                throw new RuntimeException("Warehouse not found: " + id);
+            }
+            log.info("updateWarehouse: updated warehouse id={}", id);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("updateWarehouse failed: id={}, error={}", id, e.getMessage(), e);
+            throw e;
+        }
     }
 
     // ── DELETE (soft) ─────────────────────────────────────────────────────────
 
     public void deactivateWarehouse(Long id) {
-        int rows = jdbcTemplate.update(
-                "UPDATE warehouse_master SET active = false WHERE id = ?", id);
-        if (rows == 0) throw new RuntimeException("Warehouse not found: " + id);
+        log.info("deactivateWarehouse: id={}", id);
+        try {
+            int rows = jdbcTemplate.update(
+                    "UPDATE warehouse_master SET active = false WHERE id = ?", id);
+            if (rows == 0) {
+                log.warn("deactivateWarehouse: warehouse not found id={}", id);
+                throw new RuntimeException("Warehouse not found: " + id);
+            }
+            log.info("deactivateWarehouse: deactivated warehouse id={}", id);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("deactivateWarehouse failed: id={}, error={}", id, e.getMessage(), e);
+            throw e;
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

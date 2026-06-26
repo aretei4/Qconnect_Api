@@ -18,10 +18,16 @@ public class ExcelUtils {
         if (cell == null) return null;
 
         return switch (cell.getCellType()) {
-            case STRING -> cell.getStringCellValue();
-            case NUMERIC -> String.valueOf(cell.getNumericCellValue());
+            case STRING  -> cell.getStringCellValue();
+            case NUMERIC -> {
+                double v = cell.getNumericCellValue();
+                // Whole numbers (mobile, pincode, IDs, etc.) must not get a ".0" suffix
+                yield (v == Math.floor(v) && !Double.isInfinite(v))
+                        ? String.valueOf((long) v)
+                        : String.valueOf(v);
+            }
             case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
-            default -> null;
+            default      -> null;
         };
     }
 }

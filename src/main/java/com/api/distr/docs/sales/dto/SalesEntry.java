@@ -4,6 +4,7 @@ package com.api.distr.docs.sales.dto;
 import java.sql.Date;
 
 public class SalesEntry {
+    private Long   direId;
     private String picklistNo;
     private String salesOrderNo;
     private String customerNo;
@@ -20,6 +21,9 @@ public class SalesEntry {
     private String companyName;
 
     // Getters & Setters
+    public Long   getDireId()    { return direId; }
+    public void   setDireId(Long direId) { this.direId = direId; }
+
     public String getPicklistNo() { return picklistNo; }
     public void setPicklistNo(String picklistNo) { this.picklistNo = picklistNo; }
 

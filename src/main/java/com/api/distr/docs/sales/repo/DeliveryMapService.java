@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Service
 public class DeliveryMapService {
 
+    private static final Logger log = LoggerFactory.getLogger(DeliveryMapService.class);
+
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -41,7 +45,7 @@ public class DeliveryMapService {
     // table before switching to this query in production.
     private static final String SQL = """
             SELECT
-                TRIM(da.picklist_no)                                        AS picklist_no,
+                da.dire_id                                                  AS dire_id,
                 COALESCE(dm.delivery_name, 'Unknown')                       AS delivery_boy_name,
                 CASE da.status
                     WHEN 2 THEN 'DELIVERED'
@@ -56,9 +60,9 @@ public class DeliveryMapService {
                 COALESCE(CAST(sse.net_value AS DOUBLE PRECISION), 0.0)     AS net_value
             FROM delivery_assignments da
             LEFT JOIN delivery_master dm
-                   ON da.delivery_boy_id::bigint = dm.delivery_id
+                   ON da.delivery_boy_id::text = dm.delivery_id::text
             LEFT JOIN stage_sales_entery sse
-                   ON TRIM(sse.picklist_no) = TRIM(da.picklist_no)
+                   ON sse.dire_id = da.dire_id
             WHERE da.delivery_date BETWEEN ? AND ?
               AND COALESCE(da.lat, 0) <> 0
               AND COALESCE(da.lon, 0) <> 0
@@ -66,13 +70,14 @@ public class DeliveryMapService {
             """;
 
     public List<DeliveryMapDTO> getMapPoints(LocalDate fromDate, LocalDate toDate) {
+        log.info("getMapPoints: fromDate={}, toDate={}", fromDate, toDate);
         try {
             List<DeliveryMapDTO> rows = jdbcTemplate.query(
                     SQL,
                     new Object[]{fromDate, toDate},
                     (rs, rowNum) -> {
                         DeliveryMapDTO d = new DeliveryMapDTO();
-                        d.picklist_no     = rs.getString("picklist_no");
+                        d.picklist_no     = String.valueOf(rs.getLong("dire_id"));
                         d.deliveryBoyName = rs.getString("delivery_boy_name");
                         d.status          = rs.getString("status");
                         d.lat             = rs.getDouble("lat");
@@ -85,15 +90,16 @@ public class DeliveryMapService {
                     }
             );
 
-            // Fall back to static demo data when no live rows are found
             if (rows.isEmpty()) {
+                log.warn("getMapPoints: no live rows found for range {}-{}, returning demo data", fromDate, toDate);
                 return staticDemoPoints();
             }
+            log.info("getMapPoints: returned {} map points", rows.size());
             return rows;
 
         } catch (Exception e) {
-            // If the query fails (e.g. lat/lon columns not yet added), return demo data
-            System.err.println("[DeliveryMapService] DB query failed, using demo data: " + e.getMessage());
+            log.error("getMapPoints failed: fromDate={}, toDate={}, error={} — returning demo data",
+                    fromDate, toDate, e.getMessage(), e);
             return staticDemoPoints();
         }
     }

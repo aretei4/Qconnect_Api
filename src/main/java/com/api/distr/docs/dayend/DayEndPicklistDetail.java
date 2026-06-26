@@ -6,6 +6,8 @@ import java.util.List;
 
 public class DayEndPicklistDetail {
 
+    private Long   direId;
+    private String invoiceNo;       // stage_sales_entery.sales_order_no
     private String picklistNo;
     private String custDesc;
     private boolean delivered;
@@ -14,8 +16,14 @@ public class DayEndPicklistDetail {
     private List<PaymentModeEntry> paymentModes;
     private String reason;
 
+    public Long   getDireId()                          { return direId; }
+    public void   setDireId(Long direId)             { this.direId = direId; }
+
+    public String getInvoiceNo()                       { return invoiceNo; }
+    public void   setInvoiceNo(String invoiceNo)       { this.invoiceNo = invoiceNo; }
+
     public String getPicklistNo()                      { return picklistNo; }
-    public void setPicklistNo(String picklistNo)       { this.picklistNo = picklistNo; }
+    public void   setPicklistNo(String picklistNo)     { this.picklistNo = picklistNo; }
 
     public String getCustDesc()                        { return custDesc; }
     public void setCustDesc(String custDesc)           { this.custDesc = custDesc; }

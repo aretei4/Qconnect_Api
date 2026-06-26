@@ -53,7 +53,7 @@ public class SalesExcelService {
                 try {
                     SalesRecord r = parseRow(row);
                     custRepo.saveOrUpdate(r);
-                    if (repo.findCountByPicklist(r.getPicklistNo()) > 0) {
+                    if (repo.findCountBySalesOrder(r.getSalesOrderNo()) > 0) {
                         repo.update(r);
                     } else {
                         repo.insert(r);
@@ -71,27 +71,34 @@ public class SalesExcelService {
         return errors;
     }
 
-    private SalesRecord parseRow(Map<String, Object> row ) throws Exception {
+    private SalesRecord parseRow(Map<String, Object> row) throws Exception {
+        return parseRow(row, DistrConstants.DATE_FORMAT);
+    }
+
+    private SalesRecord parseRow(Map<String, Object> row, String dateFormat) throws Exception {
         SalesRecord r = new SalesRecord();
 
-        r.setPicklistNo(""+row.get("PicklistNo"));
-      //  r.setSalesOrderNo(getString(row.getCell(1)));
-        r.setCustomerNo(""+row.get("CustomerNo"));
-        r.setCustDesc(""+row.get("CustomerName"));
-        //r.setSalesRepNo(getString(row.getCell(4)));
-        //r.setSalesRepName(getString(row.getCell(5)));
-        //r.setRoute(getString(row.getCell(6)));
-        //r.setRouteName(getString(row.getCell(7)));
-        
-        
-        String billingDateStr = ""+row.get("BillingDate");
-        java.sql.Date billingDate = Util.toSqlDate(billingDateStr, DistrConstants.DATE_FORMAT);//(java.sql.Date) new Date( getStringCellValue(row.getCell(8)));
-        r.setBillingDate(billingDate);  // YYYY-MM-DD
+        r.setPicklistNo  (str(row, "PicklistNo"));
+        r.setSalesOrderNo(str(row, "InvoiceNo"));
+        r.setCustomerNo  (str(row, "CustomerNo"));
+        r.setCustDesc    (str(row, "CustomerName"));
+        r.setSalesRepName(str(row, "SalesRepName"));
 
-        //r.setWarehouse(getString(row.getCell(9)));
-        r.setNetValue(Double.parseDouble(""+row.get("NetValue")));
+        String billingDateStr = str(row, "BillingDate");
+        if (billingDateStr != null)
+            r.setBillingDate(Util.toSqlDate(billingDateStr, dateFormat));
+
+        String netVal = str(row, "NetValue");
+        r.setNetValue(netVal != null ? Double.parseDouble(netVal.replace(",", "")) : 0.0);
 
         return r;
+    }
+
+    private String str(Map<String, Object> row, String key) {
+        Object val = row.get(key);
+        if (val == null) return null;
+        String s = val.toString().trim();
+        return s.isEmpty() || s.equalsIgnoreCase("null") ? null : s;
     }
     
     private SalesRecord parseRow(Row row) throws Exception {

@@ -9,6 +9,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.util.Map;
 
@@ -16,6 +17,22 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    /** Static-asset / browser auto-requests (favicon.ico, robots.txt, etc.) —
+     *  return 404 silently without polluting the ERROR log. */
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<Void> handleNoHandler(NoHandlerFoundException ex) {
+        String path = ex.getRequestURL();
+        if (path != null && (path.contains("favicon") || path.contains("robots.txt")
+                || path.contains(".ico") || path.contains(".png") || path.contains(".css")
+                || path.contains(".js"))) {
+            // silent 204 — browser won't complain and no log spam
+            return ResponseEntity.noContent().build();
+        }
+        // Real missing endpoints → log as WARN (not ERROR) + 404
+        log.warn("No handler found: {} {}", ex.getHttpMethod(), path);
+        return ResponseEntity.notFound().build();
+    }
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Map<String, String>> handleBadCredentials(BadCredentialsException ex) {

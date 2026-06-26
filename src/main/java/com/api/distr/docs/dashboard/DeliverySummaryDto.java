@@ -3,15 +3,35 @@ package com.api.distr.docs.dashboard;
 
 public class DeliverySummaryDto {
 
-    private int totalDeliveries;
-    private int delivered;
-    private int pending;
-    private int cancelled;
+    private int    totalDeliveries;
+    private int    delivered;
+    private int    pending;
+    private int    cancelled;
 
-    private int todayTotal=30;
-    private int todayDelivered;
-    private int todayPending;
-    private int todayCancelled;
+    private int    todayTotal = 30;
+    private int    todayDelivered;
+    private int    todayPending;
+    private int    todayCancelled;
+
+    // Net invoice value (from stage_sales_entery)
+    private double todayNetValue;
+    private double totalNetValue;
+
+    // Payment collected (from delivery_status)
+    private double todayCollected;
+    private double totalCollected;
+
+    public double getTodayNetValue()           { return todayNetValue; }
+    public void   setTodayNetValue(double v)   { this.todayNetValue = v; }
+
+    public double getTotalNetValue()           { return totalNetValue; }
+    public void   setTotalNetValue(double v)   { this.totalNetValue = v; }
+
+    public double getTodayCollected()          { return todayCollected; }
+    public void   setTodayCollected(double v)  { this.todayCollected = v; }
+
+    public double getTotalCollected()          { return totalCollected; }
+    public void   setTotalCollected(double v)  { this.totalCollected = v; }
     
     
     public int getTodayTotal() {

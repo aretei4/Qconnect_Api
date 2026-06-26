@@ -29,8 +29,13 @@ public class CustomerRepository {
         return (value == null || value.isBlank()) ? 0.00 : Double.parseDouble(value);
     }
     
-    public int updateCustomerLatLon(
-    		DeliveryStatus deliVery) {
+    public int updateLatLon(String custNo, double lat, double lon) {
+        String sql = "UPDATE customer_details SET lat = ?, lon = ? WHERE cust_no = ?";
+        return jdbc.update(sql, lat, lon, custNo);
+    }
+
+    public int updateCustomerLatLon(DeliveryStatus deliVery) {
+        if (deliVery.getLat() == null || deliVery.getLon() == null) return 0;
 
         String sql = """
             UPDATE customer_details
@@ -38,11 +43,12 @@ public class CustomerRepository {
             WHERE cust_no IN (
                 SELECT customer_no
                 FROM stage_sales_entery
-                WHERE picklist_no = ?
+                WHERE dire_id = ?
             )
+            AND (lat IS NULL OR lon IS NULL OR lat = 0 OR lon = 0)
         """;
 
-        return jdbc.update(sql, deliVery.getLat(), deliVery.getLon(), deliVery.getPicklistNo());
+        return jdbc.update(sql, deliVery.getLat(), deliVery.getLon(), deliVery.getDireId());
     }
 
     public List<CustomerDTO> findAll() {
@@ -84,27 +90,22 @@ public class CustomerRepository {
 
         if (count > 0) {
 
-            // UPDATE
-            String updateSql = """
-                UPDATE customer_details
-                SET cust_desc = ?, cust_mobile = ?, address = ?, pin = ?, lat = ?, lon = ?
-                WHERE cust_no = ?
-                """;
+            // UPDATE — only non-null/non-blank fields
+            List<String> setClauses = new java.util.ArrayList<>();
+            List<Object> params = new java.util.ArrayList<>();
 
-            jdbc.update(conn -> {
-                var ps = conn.prepareStatement(updateSql);
-                ps.setString(1, dto.getCustDesc());
-                ps.setString(2, dto.getCustMobile());
-                ps.setString(3, dto.getAddress());
-                ps.setString(4, dto.getPin());
+            if (dto.getCustDesc()   != null && !dto.getCustDesc().isBlank())   { setClauses.add("cust_desc = ?");   params.add(dto.getCustDesc()); }
+            if (dto.getCustMobile() != null && !dto.getCustMobile().isBlank()) { setClauses.add("cust_mobile = ?"); params.add(dto.getCustMobile()); }
+            if (dto.getAddress()    != null && !dto.getAddress().isBlank())    { setClauses.add("address = ?");     params.add(dto.getAddress()); }
+            if (dto.getPin()        != null && !dto.getPin().isBlank())        { setClauses.add("pin = ?");         params.add(dto.getPin()); }
+            if (dto.getLat()        != null && dto.getLat() != 0)              { setClauses.add("lat = ?");         params.add(dto.getLat()); }
+            if (dto.getLon()        != null && dto.getLon() != 0)              { setClauses.add("lon = ?");         params.add(dto.getLon()); }
 
-                // DOUBLE fields → use setObject for nullable values
-                ps.setObject(5, dto.getLat(), Types.DOUBLE);
-                ps.setObject(6, dto.getLon(), Types.DOUBLE);
-
-                ps.setString(7, dto.getCustNo());
-                return ps;
-            });
+            if (!setClauses.isEmpty()) {
+                params.add(dto.getCustNo());
+                String updateSql = "UPDATE customer_details SET " + String.join(", ", setClauses) + " WHERE cust_no = ?";
+                jdbc.update(updateSql, params.toArray());
+            }
 
         } else {
 

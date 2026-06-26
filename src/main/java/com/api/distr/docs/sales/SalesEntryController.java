@@ -27,9 +27,6 @@ public class SalesEntryController {
 
     @GetMapping
     public List<SalesEntry> getByFilters(@RequestParam Map<String, String> filters) {
-        if (filters.isEmpty()) {
-            throw new IllegalArgumentException("At least one filter must be provided.");
-        }
         return repository.findByFilters(filters);
     }
 
@@ -40,6 +37,16 @@ public class SalesEntryController {
             return ResponseEntity.badRequest().body(Map.of("error", "No picklist numbers provided"));
         }
         int deleted = repository.deleteByPicklistNos(picklistNos);
+        return ResponseEntity.ok(Map.of("deleted", deleted));
+    }
+
+    /** POST /api/sales/delete-by-dire  —  body: [15, 22, 37, ...] */
+    @PostMapping("/delete-by-dire")
+    public ResponseEntity<?> deleteByDireIds(@RequestBody List<Long> direIds) {
+        if (direIds == null || direIds.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No dire IDs provided"));
+        }
+        int deleted = repository.deleteByDireIds(direIds);
         return ResponseEntity.ok(Map.of("deleted", deleted));
     }
 }

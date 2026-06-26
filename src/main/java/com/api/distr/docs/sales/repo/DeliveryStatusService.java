@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -14,10 +16,14 @@ import com.api.distr.docs.sales.dto.DeliveryStatusDTO;
 @Service
 public class DeliveryStatusService {
 
+	private static final Logger log = LoggerFactory.getLogger(DeliveryStatusService.class);
+
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
 	public List<DeliveryStatusDTO> getByUpdateDate(LocalDate fromDate, LocalDate toDate) {
+		log.info("getByUpdateDate: fromDate={}, toDate={}", fromDate, toDate);
+		try {
 
 		// delivery_assignments.status: 0=PENDING  1=FAILED  2=DELIVERED
 		// delivery_assignments.delivery_date: set by UPDATE when boy submits (NULL while pending)
@@ -27,7 +33,9 @@ public class DeliveryStatusService {
 				    SELECT
 				        da.delivery_boy_id                             AS delivery_id,
 				        dm.delivery_name,
-				        da.picklist_no,
+				        da.dire_id,
+				        COALESCE(sse.picklist_no, '')                  AS picklist_no,
+				        COALESCE(sse.sales_order_no, '')               AS invoice_no,
 				        CASE da.status
 				            WHEN 0 THEN 'PENDING'
 				            WHEN 2 THEN 'DELIVERED'
@@ -39,26 +47,30 @@ public class DeliveryStatusService {
 				        ds.reason,
 				        COALESCE(da.delivery_date, da.updated_at)      AS record_date
 				    FROM delivery_assignments da
-				    LEFT JOIN delivery_status ds ON ds.picklist_no = da.picklist_no
-				    LEFT JOIN delivery_master dm ON dm.delivery_id::text = da.delivery_boy_id
-				    WHERE COALESCE(da.delivery_date, da.updated_at) BETWEEN ? AND ?
+				    LEFT JOIN delivery_status ds  ON ds.dire_id = da.dire_id
+				    LEFT JOIN delivery_master dm  ON dm.delivery_id::text = da.delivery_boy_id
+				    LEFT JOIN stage_sales_entery sse ON sse.dire_id = da.dire_id
+				    WHERE (da.delivery_date BETWEEN ? AND ?)
+				       OR (da.status != 0 AND da.updated_at BETWEEN ? AND ?)
 				    ORDER BY record_date DESC
 				""";
 
 		LocalDateTime from = fromDate.atStartOfDay();
 		LocalDateTime to = toDate.atTime(23, 59, 59);
 
-		return jdbcTemplate.query(sql, new Object[] { from, to }, (rs, rowNum) -> {
+		List<DeliveryStatusDTO> result = jdbcTemplate.query(sql, new Object[] { from, to, from, to }, (rs, rowNum) -> {
 
 			DeliveryStatusDTO dto = new DeliveryStatusDTO();
 
-			dto.delivery_id = rs.getString("delivery_id");
+			dto.delivery_id     = rs.getString("delivery_id");
 			dto.deliveryBoyName = rs.getString("delivery_name");
-			dto.picklist_no = rs.getString("picklist_no");
-			dto.status = rs.getString("status");
-			dto.otp = rs.getBoolean("otp");
-			dto.payment_amount = rs.getDouble("payment_amount");
-			dto.reason = rs.getString("reason");
+			dto.direId          = rs.getLong("dire_id");
+			dto.picklist_no     = rs.getString("picklist_no");
+			dto.invoiceNo       = rs.getString("invoice_no");
+			dto.status          = rs.getString("status");
+			dto.otp             = rs.getBoolean("otp");
+			dto.payment_amount  = rs.getDouble("payment_amount");
+			dto.reason          = rs.getString("reason");
 
 			// Parse "CASH:1000.0,UPI:500.0" → List<PaymentModeEntry>
 			String rawMode = rs.getString("payment_mode");
@@ -72,5 +84,13 @@ public class DeliveryStatusService {
 
 			return dto;
 		});
+
+		log.info("getByUpdateDate: returned {} records", result.size());
+		return result;
+
+		} catch (Exception e) {
+			log.error("getByUpdateDate failed: fromDate={}, toDate={}, error={}", fromDate, toDate, e.getMessage(), e);
+			throw e;
+		}
 	}
 }
