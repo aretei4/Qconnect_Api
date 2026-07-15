@@ -21,6 +21,26 @@ public class DeliverySummaryDto {
     private double todayCollected;
     private double totalCollected;
 
+    // Assigned (status 9) — not yet started by agent
+    private int    assigned;
+    private double assignedValue;
+
+    public int    getAssigned()                 { return assigned; }
+    public void   setAssigned(int v)            { this.assigned = v; }
+
+    public double getAssignedValue()            { return assignedValue; }
+    public void   setAssignedValue(double v)    { this.assignedValue = v; }
+
+    // Rejected (status 8)
+    private int    rejected;
+    private double rejectedValue;
+
+    public int    getRejected()                 { return rejected; }
+    public void   setRejected(int v)            { this.rejected = v; }
+
+    public double getRejectedValue()            { return rejectedValue; }
+    public void   setRejectedValue(double v)    { this.rejectedValue = v; }
+
     public double getTodayNetValue()           { return todayNetValue; }
     public void   setTodayNetValue(double v)   { this.todayNetValue = v; }
 

@@ -155,6 +155,26 @@ public class DeliveryService {
         }
     }
 
+    @Transactional
+    public String acceptAssignments(List<Long> direIds) {
+        log.info("acceptAssignments: direIds={}", direIds);
+        int rows = deliveryRepository.acceptAssignments(direIds);
+        if (rows == 0)
+            throw new IllegalArgumentException("No assignments found or already accepted: direIds=" + direIds);
+        log.info("acceptAssignments: {} accepted", rows);
+        return rows + " assignment(s) accepted";
+    }
+
+    @Transactional
+    public String rejectAssignments(List<Long> direIds) {
+        log.info("rejectAssignments: direIds={}", direIds);
+        int rows = deliveryRepository.rejectAssignments(direIds);
+        if (rows == 0)
+            throw new IllegalArgumentException("No assignments found to reject: direIds=" + direIds);
+        log.info("rejectAssignments: {} rejected", rows);
+        return rows + " assignment(s) rejected";
+    }
+
     public int countPendingDans() {
         Integer count = deliveryRepository.countPendingDans();
         return count != null ? count : 0;
@@ -162,18 +182,25 @@ public class DeliveryService {
 
     public List<SalesEntryDto> getDeliveryList(Map<String, String> filters) {
         log.info("getDeliveryList: filters={}", filters);
-        String deliveryId   = filters.getOrDefault("delivery_id", "");
+        // accept both spellings: delivery_id and deliveri_id (legacy typo)
+        String deliveryId   = filters.containsKey("delivery_id")
+                            ? filters.get("delivery_id")
+                            : filters.getOrDefault("deliveri_id", "");
         String statusFilter = filters.getOrDefault("status", "pending");
         try {
-            List<SalesEntryDto> result = statusFilter.equals("pending")
-                ? deliveryRepository.getAllSales(deliveryId)
-                : deliveryRepository.getAllSalesByStatus(deliveryId, statusFilter);
+            // Always use getAllSalesByStatus so pending includes status 9 (newly assigned)
+            List<SalesEntryDto> result = deliveryRepository.getAllSalesByStatus(deliveryId, statusFilter);
             log.info("getDeliveryList: returned {} entries", result.size());
             return result;
         } catch (Exception e) {
             log.error("getDeliveryList failed: filters={}, error={}", filters, e.getMessage(), e);
             throw e;
         }
+    }
+
+    public List<com.api.distr.docs.sales.dto.AssignmentDTO> getAllAssignments(
+            String fromDate, String toDate, String agentId, Integer status) {
+        return deliveryRepository.getAllAssignments(fromDate, toDate, agentId, status);
     }
 
 }

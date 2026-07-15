@@ -96,8 +96,10 @@ public class DanRepository {
             SELECT da.id AS dan_id, da.delivery_id, da.delivery_date,
                    (SELECT STRING_AGG(ds.dire_id::text, ',' ORDER BY ds.dire_id)
                     FROM delivery_status ds
+                    LEFT JOIN delivery_assignments das ON das.dire_id = ds.dire_id
                     WHERE ds.delivery_id = da.delivery_id
-                      AND ds.delivery_date::date = da.delivery_date) AS dire_ids,
+                      AND ds.delivery_date::date = da.delivery_date
+                      AND COALESCE(das.status, 0) != 10) AS dire_ids,
                    dm.delivery_name AS agent_name
             FROM dayend_approval da
             LEFT JOIN delivery_master dm ON da.delivery_id = dm.delivery_id
@@ -243,6 +245,139 @@ public class DanRepository {
         }
 
         return saveReturns(deliveryId, direId, "partial", rows);
+    }
+
+    // ── DAN Close Report ──────────────────────────────────────────────────────
+
+    /** List rows for the DAN Close Report — optional date range + agent filters. */
+    public List<com.api.distr.docs.dan.dto.DanReportRowDto> getReport(LocalDate fromDate, LocalDate toDate, Long agentId) {
+        StringBuilder sql = new StringBuilder("""
+            SELECT da.id                                    AS dan_id,
+                   da.delivery_id,
+                   da.delivery_date,
+                   da.status,
+                   COALESCE(dm.delivery_name, 'Agent ' || da.delivery_id) AS agent_name,
+                   (SELECT COUNT(*) FROM delivery_status ds
+                     WHERE ds.delivery_id = da.delivery_id
+                       AND ds.delivery_date::date = da.delivery_date)     AS deliveries,
+                   COALESCE((SELECT SUM(CAST(sse.net_value AS double precision))
+                     FROM delivery_status ds
+                     JOIN stage_sales_entery sse ON sse.dire_id = ds.dire_id
+                     WHERE ds.delivery_id = da.delivery_id
+                       AND ds.delivery_date::date = da.delivery_date), 0) AS amount,
+                   COALESCE((SELECT SUM(dr.return_amt) FROM dan_returns dr
+                     WHERE dr.delivery_id = da.delivery_id
+                       AND DATE(dr.created_at) = da.delivery_date), 0)    AS returns_amt
+            FROM dayend_approval da
+            LEFT JOIN delivery_master dm ON dm.delivery_id = da.delivery_id
+            WHERE 1=1
+            """);
+        List<Object> params = new java.util.ArrayList<>();
+        if (fromDate != null) { sql.append(" AND da.delivery_date >= ?"); params.add(fromDate); }
+        if (toDate != null)   { sql.append(" AND da.delivery_date <= ?"); params.add(toDate); }
+        if (agentId != null)  { sql.append(" AND da.delivery_id = ?");    params.add(agentId); }
+        sql.append(" ORDER BY da.delivery_date DESC, da.id DESC");
+
+        return jdbc.query(sql.toString(), params.toArray(), (rs, rn) -> {
+            com.api.distr.docs.dan.dto.DanReportRowDto dto = new com.api.distr.docs.dan.dto.DanReportRowDto();
+            long danId = rs.getLong("dan_id");
+            LocalDate d = rs.getDate("delivery_date").toLocalDate();
+            dto.setDanId(danId);
+            dto.setDanCode(buildDanCode(d, danId));
+            dto.setDate(d.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+            dto.setAgentName(rs.getString("agent_name"));
+            dto.setAgentCode("DA-" + rs.getLong("delivery_id"));
+            dto.setDeliveries(rs.getInt("deliveries"));
+            dto.setAmount(rs.getDouble("amount"));
+            dto.setReturnsAmt(rs.getDouble("returns_amt"));
+            dto.setStatus("CLOSED".equalsIgnoreCase(rs.getString("status")) ? "Closed" : "Pending");
+            return dto;
+        });
+    }
+
+    /** Detail view of a single DAN: totals + invoice list with payment breakdown. */
+    public com.api.distr.docs.dan.dto.DanReportDetailDto getReportDetail(long danId) {
+        java.util.Map<String, Object> head = jdbc.queryForMap("""
+            SELECT da.id, da.delivery_id, da.delivery_date, da.status,
+                   COALESCE(dm.delivery_name, 'Agent ' || da.delivery_id) AS agent_name
+            FROM dayend_approval da
+            LEFT JOIN delivery_master dm ON dm.delivery_id = da.delivery_id
+            WHERE da.id = ?
+            """, danId);
+
+        long      deliveryId = ((Number) head.get("delivery_id")).longValue();
+        LocalDate date       = ((java.sql.Date) head.get("delivery_date")).toLocalDate();
+        String    status     = String.valueOf(head.get("status"));
+
+        com.api.distr.docs.dan.dto.DanReportDetailDto dto = new com.api.distr.docs.dan.dto.DanReportDetailDto();
+        dto.setDanId(danId);
+        dto.setDanCode(buildDanCode(date, danId));
+        dto.setDate(date.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+        dto.setAgentName(String.valueOf(head.get("agent_name")));
+        dto.setAgentCode("DA-" + deliveryId);
+        dto.setStatus("CLOSED".equalsIgnoreCase(status) ? "Closed" : "Pending");
+
+        // Per-dire return items for this agent + date
+        java.util.Map<Long, Double> returnsByDire = new java.util.HashMap<>();
+        java.util.Map<Long, List<com.api.distr.docs.dan.dto.DanReportDetailDto.ReturnItem>> returnItemsByDire =
+                new java.util.HashMap<>();
+        jdbc.query("""
+            SELECT dire_id, description, return_qty, return_amt, reason
+            FROM dan_returns
+            WHERE delivery_id = ? AND DATE(created_at) = ?
+            ORDER BY dire_id, id
+            """, new Object[]{deliveryId, date}, rs -> {
+                long dire = rs.getLong("dire_id");
+                returnsByDire.merge(dire, rs.getDouble("return_amt"), Double::sum);
+                var item = new com.api.distr.docs.dan.dto.DanReportDetailDto.ReturnItem();
+                item.setDescription(rs.getString("description"));
+                item.setQty(rs.getInt("return_qty"));
+                item.setAmount(rs.getDouble("return_amt"));
+                item.setReason(rs.getString("reason"));
+                returnItemsByDire.computeIfAbsent(dire, k -> new java.util.ArrayList<>()).add(item);
+            });
+
+        List<com.api.distr.docs.dan.dto.DanReportDetailDto.InvoiceRow> invoices = jdbc.query("""
+            SELECT ds.dire_id,
+                   COALESCE(sse.sales_order_no, '')                     AS invoice_no,
+                   COALESCE(sse.cust_desc, '')                          AS cust_name,
+                   COALESCE(CAST(sse.net_value AS double precision), 0) AS net_value,
+                   COALESCE(ds.payment_amount, 0)                       AS paid_amount,
+                   ds.payment_mode
+            FROM delivery_status ds
+            LEFT JOIN stage_sales_entery sse ON sse.dire_id = ds.dire_id
+            WHERE ds.delivery_id = ? AND ds.delivery_date::date = ?
+            ORDER BY sse.sales_order_no
+            """, new Object[]{deliveryId, date}, (rs, rn) -> {
+                var row = new com.api.distr.docs.dan.dto.DanReportDetailDto.InvoiceRow();
+                row.setDireId(rs.getLong("dire_id"));
+                row.setInvoiceNo(rs.getString("invoice_no"));
+                row.setCustName(rs.getString("cust_name"));
+                row.setAmount(rs.getDouble("net_value"));
+                row.setPaidAmount(rs.getDouble("paid_amount"));
+                row.setReturnAmt(returnsByDire.getOrDefault(rs.getLong("dire_id"), 0.0));
+                row.setReturns(returnItemsByDire.getOrDefault(rs.getLong("dire_id"), List.of()));
+                for (var pm : com.api.distr.docs.sales.dto.DeliveryStatusDTO
+                        .parsePaymentModes(rs.getString("payment_mode"), rs.getDouble("paid_amount"))) {
+                    var entry = new com.api.distr.docs.dan.dto.DanReportDetailDto.PaymentEntry(
+                            pm.getMode(), pm.getAmount());
+                    entry.setChequeNo(pm.getChequeNo());
+                    entry.setBankName(pm.getBankName());
+                    entry.setReferenceNo(pm.getReferenceNo());
+                    row.getPayments().add(entry);
+                }
+                return row;
+            });
+
+        dto.setInvoices(invoices);
+        dto.setDeliveries(invoices.size());
+        dto.setTotalAmount(invoices.stream().mapToDouble(
+                com.api.distr.docs.dan.dto.DanReportDetailDto.InvoiceRow::getAmount).sum());
+        dto.setReturnsAmt(invoices.stream().mapToDouble(
+                com.api.distr.docs.dan.dto.DanReportDetailDto.InvoiceRow::getReturnAmt).sum());
+        dto.setReturnsCount((int) invoices.stream().filter(i -> i.getReturnAmt() > 0).count());
+        dto.setNetSettled(dto.getTotalAmount() - dto.getReturnsAmt());
+        return dto;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

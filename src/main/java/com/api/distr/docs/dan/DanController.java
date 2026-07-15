@@ -48,6 +48,44 @@ public class DanController {
         }
     }
 
+    // ── DAN Close Report ──────────────────────────────────────────────────────
+
+    /**
+     * GET /api/dan/report?fromDate=dd/MM/yyyy&toDate=dd/MM/yyyy&agentId=X — all filters optional.
+     * List rows: dan code, date, agent, deliveries, amount, returns, status.
+     */
+    @GetMapping("/report")
+    public ResponseEntity<?> getReport(
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate,
+            @RequestParam(required = false) Long agentId) {
+        try {
+            java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            java.time.LocalDate from = (fromDate != null && !fromDate.isBlank())
+                ? java.time.LocalDate.parse(fromDate, fmt) : null;
+            java.time.LocalDate to   = (toDate != null && !toDate.isBlank())
+                ? java.time.LocalDate.parse(toDate, fmt) : null;
+            return ResponseEntity.ok(service.getReport(from, to, agentId));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
+        }
+    }
+
+    /** GET /api/dan/report/{danId} — detail with totals and invoice payment breakdown. */
+    @GetMapping("/report/{danId}")
+    public ResponseEntity<?> getReportDetail(@PathVariable long danId) {
+        try {
+            return ResponseEntity.ok(service.getReportDetail(danId));
+        } catch (org.springframework.dao.EmptyResultDataAccessException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "DAN not found: " + danId));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
+        }
+    }
+
     // ── Returns ───────────────────────────────────────────────────────────────
 
     /**

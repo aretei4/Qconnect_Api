@@ -18,6 +18,7 @@ package com.api.distr.docs.sales.dto;
 public class SmartRouteAssignItem {
 
     public String picklist_no;
+    public Long   direId;        // optional — when present, used directly instead of picklist lookup
     public int    sequence;
     public Long   deliveryBoyId;
     public String deliveryBoyName;
@@ -28,6 +29,9 @@ public class SmartRouteAssignItem {
     // Getters / setters (for Jackson)
     public String getPicklist_no()     { return picklist_no; }
     public void   setPicklist_no(String v) { picklist_no = v; }
+
+    public Long getDireId()            { return direId; }
+    public void setDireId(Long v)      { direId = v; }
 
     public int  getSequence()          { return sequence; }
     public void setSequence(int v)     { sequence = v; }

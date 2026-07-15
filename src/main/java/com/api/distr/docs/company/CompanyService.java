@@ -1,7 +1,5 @@
 package com.api.distr.docs.company;
 
-import jakarta.annotation.PostConstruct;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -9,28 +7,10 @@ import java.util.List;
 @Service
 public class CompanyService {
 
-    private final JdbcTemplate      jdbc;
     private final CompanyRepository repository;
 
-    public CompanyService(JdbcTemplate jdbc, CompanyRepository repository) {
-        this.jdbc       = jdbc;
+    public CompanyService(CompanyRepository repository) {
         this.repository = repository;
-    }
-
-    // ── Table init ────────────────────────────────────────────────────────────
-
-    @PostConstruct
-    public void initTable() {
-        jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS companies (
-                    id       BIGSERIAL    PRIMARY KEY,
-                    name     VARCHAR(100) NOT NULL,
-                    code     VARCHAR(20)  NOT NULL UNIQUE,
-                    base_url VARCHAR(255) NOT NULL,
-                    active   BOOLEAN      NOT NULL DEFAULT true
-                )
-                """);
-        // Companies are managed manually via API or direct DB inserts — no seed data here.
     }
 
     // ── Queries ───────────────────────────────────────────────────────────────

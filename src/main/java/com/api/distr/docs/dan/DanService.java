@@ -29,6 +29,16 @@ public class DanService {
         return repo.getActiveDans(LocalDate.now());
     }
 
+    // ── DAN Close Report ──────────────────────────────────────────────────────
+
+    public List<com.api.distr.docs.dan.dto.DanReportRowDto> getReport(LocalDate fromDate, LocalDate toDate, Long agentId) {
+        return repo.getReport(fromDate, toDate, agentId);
+    }
+
+    public com.api.distr.docs.dan.dto.DanReportDetailDto getReportDetail(long danId) {
+        return repo.getReportDetail(danId);
+    }
+
     // ── Returns ───────────────────────────────────────────────────────────────
 
     public List<DanReturnDto> getReturnsByDirId(long dirId) {

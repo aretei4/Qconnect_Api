@@ -19,6 +19,10 @@ public class DashboardService {
         return dashboardDao.getDeliverySummary(boyId);
     }
 
+    public OverallSummaryDto getOverallSummary(String boyId) {
+        return dashboardDao.getOverallSummary(boyId);
+    }
+
     public List<DeliveryDetailsDto> getDetails(String status) {
         return dashboardDao.getDeliveryDetails(status);
     }

@@ -5,7 +5,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,32 +19,6 @@ public class DayEndApprovalService {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
-
-    /**
-     * Ensures dayend_approval has all columns required by create/approve/reject flows.
-     * Uses IF NOT EXISTS so it is safe to run on every startup.
-     */
-    @PostConstruct
-    public void ensureSchema() {
-        String[][] columns = {
-            {"total_amount",  "NUMERIC(15,2) DEFAULT 0"},
-            {"reject_reason", "TEXT"},
-            {"approved_at",   "TIMESTAMP"},
-            {"request_date",  "TIMESTAMP"},
-            {"start_time",    "TIMESTAMP"},
-            {"status",        "VARCHAR(20) DEFAULT 'STARTED'"},
-            {"picklist_nos",  "TEXT"}
-        };
-        for (String[] col : columns) {
-            try {
-                jdbcTemplate.execute(
-                    "ALTER TABLE dayend_approval ADD COLUMN IF NOT EXISTS " + col[0] + " " + col[1]);
-            } catch (Exception e) {
-                log.warn("ensureSchema: could not add column {} — {}", col[0], e.getMessage());
-            }
-        }
-        log.info("ensureSchema: dayend_approval columns verified");
-    }
 
     // ✅ Date Parser
     private LocalDate parseDate(String date) {
@@ -65,17 +38,17 @@ public class DayEndApprovalService {
         log.info("startDayEnd: deliveryId={}, date={}", dto.getDeliveryId(), date);
 
         try {
-            String checkSql = "SELECT COUNT(*) FROM dayend_approval WHERE delivery_id = ? AND delivery_date = ?";
-            Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, dto.getDeliveryId(), date);
+            String checkSql = "SELECT COUNT(*) FROM dayend_approval WHERE delivery_id = ? AND status IN ('STARTED','PENDING','REJECTED')";
+            Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, dto.getDeliveryId());
 
             if (count != null && count > 0) {
-                log.info("startDayEnd: resetting existing record to STARTED for deliveryId={}, date={}", dto.getDeliveryId(), date);
+                log.info("startDayEnd: resetting existing open record to STARTED for deliveryId={}", dto.getDeliveryId());
                 jdbcTemplate.update(
                     "UPDATE dayend_approval " +
                     "SET status = 'STARTED', start_time = NOW(), total_amount = 0, " +
                     "    reject_reason = NULL, approved_at = NULL, request_date = NULL " +
-                    "WHERE delivery_id = ? AND delivery_date = ?",
-                    dto.getDeliveryId(), date);
+                    "WHERE delivery_id = ? AND status IN ('STARTED','PENDING','REJECTED')",
+                    dto.getDeliveryId());
             } else {
                 log.info("startDayEnd: inserting new STARTED record for deliveryId={}, date={}", dto.getDeliveryId(), date);
                 String insertSql = """
@@ -85,6 +58,13 @@ public class DayEndApprovalService {
                 """;
                 jdbcTemplate.update(insertSql, dto.getDeliveryId(), date);
             }
+
+            // Move all ASSIGNED (9) rows for this agent to PENDING (0) so delivery can begin
+            int moved = jdbcTemplate.update(
+                "UPDATE delivery_assignments SET status = 0 " +
+                "WHERE delivery_boy_id = ? AND status = 9",
+                String.valueOf(dto.getDeliveryId()));
+            log.info("startDayEnd: set {} assignment(s) from ASSIGNED→PENDING for deliveryId={}", moved, dto.getDeliveryId());
         } catch (Exception e) {
             log.error("startDayEnd failed: deliveryId={}, date={}, error={}", dto.getDeliveryId(), date, e.getMessage(), e);
             throw e;
@@ -113,9 +93,9 @@ public class DayEndApprovalService {
             // ── Guard 1: block if a PENDING approval already exists for this agent/date ──
             try {
                 String statusSql =
-                    "SELECT status FROM dayend_approval WHERE delivery_id = ? AND delivery_date = ? LIMIT 1";
+                    "SELECT status FROM dayend_approval WHERE delivery_id = ? ORDER BY id DESC LIMIT 1";
                 String currentStatus = jdbcTemplate.queryForObject(
-                    statusSql, String.class, dto.getDeliveryId(), date);
+                    statusSql, String.class, dto.getDeliveryId());
                 if ("PENDING".equals(currentStatus)) {
                     throw new IllegalStateException(
                         "Day end for this agent is already submitted and awaiting admin approval. " +
@@ -147,8 +127,8 @@ public class DayEndApprovalService {
                     "before closing the day.");
             }
 
-            String checkSql = "SELECT COUNT(*) FROM dayend_approval WHERE delivery_id = ? AND delivery_date = ?";
-            Integer count   = jdbcTemplate.queryForObject(checkSql, Integer.class, dto.getDeliveryId(), date);
+            String checkSql = "SELECT COUNT(*) FROM dayend_approval WHERE delivery_id = ? AND status IN ('STARTED','REJECTED')";
+            Integer count   = jdbcTemplate.queryForObject(checkSql, Integer.class, dto.getDeliveryId());
 
             if (count != null && count > 0) {
                 log.info("createDayEnd: updating existing record to PENDING for deliveryId={}", dto.getDeliveryId());
@@ -156,8 +136,8 @@ public class DayEndApprovalService {
                     "UPDATE dayend_approval " +
                     "SET status = 'PENDING', request_date = NOW(), total_amount = ?, picklist_nos = ?, " +
                     "    reject_reason = NULL, approved_at = NULL " +
-                    "WHERE delivery_id = ? AND delivery_date = ?",
-                    totalAmt, picklistNosStr, dto.getDeliveryId(), date);
+                    "WHERE delivery_id = ? AND status IN ('STARTED','REJECTED')",
+                    totalAmt, picklistNosStr, dto.getDeliveryId());
             } else {
                 log.info("createDayEnd: no STARTED row found — inserting new PENDING record for deliveryId={}", dto.getDeliveryId());
                 jdbcTemplate.update(

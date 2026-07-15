@@ -51,6 +51,7 @@ public class DayEndPicklistService {
             LEFT JOIN delivery_assignments da
                 ON  da.dire_id = ds.dire_id
             WHERE dea.id = ?
+              AND COALESCE(da.status, 0) != 10
             ORDER BY ds.dire_id
             """;
 

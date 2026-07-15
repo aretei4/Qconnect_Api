@@ -12,6 +12,8 @@ public class DeliveryStatusDTO {
     public String  deliveryBoyName;      // from delivery_master.delivery_name
     public Long    direId;               // stage_sales_entery.dire_id — unique transaction reference
     public String  invoiceNo;            // stage_sales_entery.sales_order_no
+    public String  custDesc;             // stage_sales_entery.cust_desc — customer name
+    public double  netValue;             // stage_sales_entery.net_value — invoice value
     public String  picklist_no;
     public String  status;               // DELIVERED | FAILED | PENDING
     public boolean otp;

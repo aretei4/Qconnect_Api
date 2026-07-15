@@ -19,6 +19,7 @@ import com.api.distr.docs.sales.dto.DeliveryStatus;
 import com.api.distr.docs.sales.dto.DeliveryStatusDTO;
 import com.api.distr.docs.sales.dto.OtpRequest;
 import com.api.distr.docs.sales.dto.OtpResponse;
+import com.api.distr.docs.sales.dto.AssignmentDTO;
 import com.api.distr.docs.sales.dto.SalesEntryDto;
 import com.api.distr.docs.sales.dto.SmartRouteAssignItem;
 import com.api.distr.docs.sales.repo.DeliveryStatusService;
@@ -67,6 +68,17 @@ public class DeliveryController {
                 LocalDate.parse(toDate,   fmt));
     }
 
+    /** Invoice Report — CLOSED (status 10) records only. */
+    @GetMapping("/invoiceReport")
+    public List<DeliveryStatusDTO> invoiceReport(
+            @RequestParam String fromDate,
+            @RequestParam String toDate) {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        return service.getClosedByDate(
+                LocalDate.parse(fromDate, fmt),
+                LocalDate.parse(toDate,   fmt));
+    }
+
     /**
      * GET /api/delivery/violations?fromDate=dd/MM/yyyy&toDate=dd/MM/yyyy
      *
@@ -85,15 +97,10 @@ public class DeliveryController {
                 LocalDate.parse(toDate,   fmt));
     }
 
+    /** ASSIGNED (status 9) map points for one agent — coordinates from customer master. */
     @GetMapping("/map")
-    public List<DeliveryMapDTO> getMapPoints(
-            @RequestParam String fromDate,
-            @RequestParam String toDate
-    ) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        LocalDate from = LocalDate.parse(fromDate, formatter);
-        LocalDate to   = LocalDate.parse(toDate, formatter);
-        return mapService.getMapPoints(from, to);
+    public List<DeliveryMapDTO> getMapPoints(@RequestParam String deliveryId) {
+        return mapService.getMapPoints(deliveryId);
     }
 
     @PostMapping("/delivery-status")
@@ -194,6 +201,64 @@ public class DeliveryController {
         } catch (Exception e) {
             return ResponseEntity.status(500)
                     .body(new ApiResponse(false, "Delete failed: " + e.getMessage()));
+        }
+    }
+
+    // ── Assignments ───────────────────────────────────────────────────────────
+    @GetMapping("/assignments")
+    public ResponseEntity<List<AssignmentDTO>> getAssignments(
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate,
+            @RequestParam(required = false) String agentId,
+            @RequestParam(required = false) Integer status) {
+        return ResponseEntity.ok(
+            deliveryService.getAllAssignments(fromDate, toDate, agentId, status));
+    }
+
+    /** Extracts dire ids from body — accepts single {"direId": 1} or multiple {"direIds": [1,2,3]}. */
+    private static List<Long> extractDireIds(Map<String, Object> body) {
+        List<Long> ids = new java.util.ArrayList<>();
+        Object single = body.get("direId");
+        if (single instanceof Number n) ids.add(n.longValue());
+        Object multi = body.get("direIds");
+        if (multi instanceof List<?> list) {
+            for (Object o : list)
+                if (o instanceof Number n) ids.add(n.longValue());
+        }
+        return ids;
+    }
+
+    /** Accept newly-assigned deliveries: status 9 → 0 (PENDING). Single direId or direIds array. */
+    @PostMapping("/accept")
+    public ResponseEntity<?> acceptAssignment(@RequestBody Map<String, Object> body) {
+        List<Long> direIds = extractDireIds(body);
+        if (direIds.isEmpty())
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "direId or direIds required"));
+        try {
+            String msg = deliveryService.acceptAssignments(direIds);
+            return ResponseEntity.ok(new ApiResponse(true, msg));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse(false, "Accept failed: " + ex.getMessage()));
+        }
+    }
+
+    /** Reject newly-assigned deliveries: status 9 → 8 (REJECTED). Single direId or direIds array. */
+    @PostMapping("/reject-assignments")
+    public ResponseEntity<?> rejectAssignments(@RequestBody Map<String, Object> body) {
+        List<Long> direIds = extractDireIds(body);
+        if (direIds.isEmpty())
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "direId or direIds required"));
+        try {
+            String msg = deliveryService.rejectAssignments(direIds);
+            return ResponseEntity.ok(new ApiResponse(true, msg));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse(false, "Reject failed: " + ex.getMessage()));
         }
     }
 

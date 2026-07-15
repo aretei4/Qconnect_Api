@@ -23,6 +23,13 @@ public class DashboardController {
         return dashboardService.getSummary(boyId);
     }
 
+    @GetMapping("/overall-summary")
+    public OverallSummaryDto getOverallSummary(
+            @RequestParam(required = false) String boyId
+    ) {
+        return dashboardService.getOverallSummary(boyId);
+    }
+
     @GetMapping("/deliveries")
     public List<DeliveryDetailsDto> getDeliveryDetails(
             @RequestParam String status) {

@@ -21,6 +21,65 @@ public class DeliveryStatusService {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
+	/** Invoice Report — CLOSED (status 10) assignments only, same row shape as statusList. */
+	public List<DeliveryStatusDTO> getClosedByDate(LocalDate fromDate, LocalDate toDate) {
+		log.info("getClosedByDate: fromDate={}, toDate={}", fromDate, toDate);
+		try {
+			String sql = """
+				    SELECT
+				        da.delivery_boy_id                             AS delivery_id,
+				        dm.delivery_name,
+				        da.dire_id,
+				        COALESCE(sse.picklist_no, '')                  AS picklist_no,
+				        COALESCE(sse.sales_order_no, '')               AS invoice_no,
+				        COALESCE(sse.cust_desc, '')                    AS cust_desc,
+				        COALESCE(CAST(sse.net_value AS double precision), 0) AS net_value,
+				        'CLOSED'                                       AS status,
+				        COALESCE(ds.otp, false)                        AS otp,
+				        COALESCE(ds.payment_amount, 0.0)               AS payment_amount,
+				        ds.payment_mode,
+				        ds.reason,
+				        COALESCE(da.delivery_date, da.updated_at)      AS record_date
+				    FROM delivery_assignments da
+				    LEFT JOIN delivery_status ds  ON ds.dire_id = da.dire_id
+				    LEFT JOIN delivery_master dm  ON dm.delivery_id::text = da.delivery_boy_id
+				    LEFT JOIN stage_sales_entery sse ON sse.dire_id = da.dire_id
+				    WHERE da.status = 10
+				      AND COALESCE(da.delivery_date, da.updated_at) BETWEEN ? AND ?
+				    ORDER BY record_date DESC
+				""";
+
+			LocalDateTime from = fromDate.atStartOfDay();
+			LocalDateTime to   = toDate.atTime(23, 59, 59);
+
+			List<DeliveryStatusDTO> result = jdbcTemplate.query(sql, new Object[]{from, to}, (rs, rowNum) -> {
+				DeliveryStatusDTO dto = new DeliveryStatusDTO();
+				dto.delivery_id     = rs.getString("delivery_id");
+				dto.deliveryBoyName = rs.getString("delivery_name");
+				dto.direId          = rs.getLong("dire_id");
+				dto.picklist_no     = rs.getString("picklist_no");
+				dto.invoiceNo       = rs.getString("invoice_no");
+				dto.custDesc        = rs.getString("cust_desc");
+				dto.netValue        = rs.getDouble("net_value");
+				dto.status          = rs.getString("status");
+				dto.otp             = rs.getBoolean("otp");
+				dto.payment_amount  = rs.getDouble("payment_amount");
+				dto.reason          = rs.getString("reason");
+				dto.paymentModes    = DeliveryStatusDTO.parsePaymentModes(
+						rs.getString("payment_mode"), dto.payment_amount);
+				LocalDateTime date = rs.getTimestamp("record_date") != null
+						? rs.getTimestamp("record_date").toLocalDateTime() : null;
+				dto.delivery_date = date != null ? date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "";
+				return dto;
+			});
+			log.info("getClosedByDate: returned {} records", result.size());
+			return result;
+		} catch (Exception e) {
+			log.error("getClosedByDate failed: fromDate={}, toDate={}, error={}", fromDate, toDate, e.getMessage(), e);
+			throw e;
+		}
+	}
+
 	public List<DeliveryStatusDTO> getByUpdateDate(LocalDate fromDate, LocalDate toDate) {
 		log.info("getByUpdateDate: fromDate={}, toDate={}", fromDate, toDate);
 		try {
@@ -36,9 +95,14 @@ public class DeliveryStatusService {
 				        da.dire_id,
 				        COALESCE(sse.picklist_no, '')                  AS picklist_no,
 				        COALESCE(sse.sales_order_no, '')               AS invoice_no,
+				        COALESCE(sse.cust_desc, '')                    AS cust_desc,
+				        COALESCE(CAST(sse.net_value AS double precision), 0) AS net_value,
 				        CASE da.status
-				            WHEN 0 THEN 'PENDING'
-				            WHEN 2 THEN 'DELIVERED'
+				            WHEN 0  THEN 'PENDING'
+				            WHEN 2  THEN 'DELIVERED'
+				            WHEN 8  THEN 'REJECTED'
+				            WHEN 9  THEN 'ASSIGNED'
+				            WHEN 10 THEN 'CLOSED'
 				            ELSE        'FAILED'
 				        END                                            AS status,
 				        COALESCE(ds.otp, false)                        AS otp,
@@ -50,8 +114,9 @@ public class DeliveryStatusService {
 				    LEFT JOIN delivery_status ds  ON ds.dire_id = da.dire_id
 				    LEFT JOIN delivery_master dm  ON dm.delivery_id::text = da.delivery_boy_id
 				    LEFT JOIN stage_sales_entery sse ON sse.dire_id = da.dire_id
-				    WHERE (da.delivery_date BETWEEN ? AND ?)
-				       OR (da.status != 0 AND da.updated_at BETWEEN ? AND ?)
+				    WHERE da.status != 10
+				      AND ((da.delivery_date BETWEEN ? AND ?)
+				       OR  (da.status != 0 AND da.updated_at BETWEEN ? AND ?))
 				    ORDER BY record_date DESC
 				""";
 
@@ -67,6 +132,8 @@ public class DeliveryStatusService {
 			dto.direId          = rs.getLong("dire_id");
 			dto.picklist_no     = rs.getString("picklist_no");
 			dto.invoiceNo       = rs.getString("invoice_no");
+			dto.custDesc        = rs.getString("cust_desc");
+			dto.netValue        = rs.getDouble("net_value");
 			dto.status          = rs.getString("status");
 			dto.otp             = rs.getBoolean("otp");
 			dto.payment_amount  = rs.getDouble("payment_amount");

@@ -5,7 +5,6 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -28,81 +27,6 @@ public class DeliveryRepository {
 
 	public DeliveryRepository(JdbcTemplate jdbcTemplate) {
 		this.jdbcTemplate = jdbcTemplate;
-	}
-
-	/**
-	 * Ensures delivery_status has all required columns and the correct constraints.
-	 * Safe to run on every startup — all DDL operations are idempotent.
-	 */
-	@PostConstruct
-	public void ensureSchema() {
-		// Drop the old picklist_no unique constraint — upsert now keys on dire_id
-		try {
-			jdbcTemplate.execute(
-				"ALTER TABLE delivery_status DROP CONSTRAINT IF EXISTS uq_delivery_status_picklist_no");
-			log.info("ensureSchema: dropped uq_delivery_status_picklist_no OK");
-		} catch (Exception e) {
-			log.warn("ensureSchema: could not drop uq_delivery_status_picklist_no — {}", e.getMessage());
-		}
-		try {
-			jdbcTemplate.execute(
-				"ALTER TABLE delivery_status ADD COLUMN IF NOT EXISTS dire_id BIGINT");
-			log.info("ensureSchema: delivery_status.dire_id OK");
-		} catch (Exception e) {
-			log.warn("ensureSchema: could not add delivery_status.dire_id — {}", e.getMessage());
-		}
-		try {
-			jdbcTemplate.execute(
-				"ALTER TABLE delivery_status ADD COLUMN IF NOT EXISTS delivery_date TIMESTAMP");
-			log.info("ensureSchema: delivery_status.delivery_date OK");
-		} catch (Exception e) {
-			log.warn("ensureSchema: could not add delivery_status.delivery_date — {}", e.getMessage());
-		}
-		try {
-			jdbcTemplate.execute(
-				"ALTER TABLE delivery_status ADD COLUMN IF NOT EXISTS payment_amount NUMERIC(12,2) DEFAULT 0");
-			log.info("ensureSchema: delivery_status.payment_amount OK");
-		} catch (Exception e) {
-			log.warn("ensureSchema: could not add delivery_status.payment_amount — {}", e.getMessage());
-		}
-		try {
-			jdbcTemplate.execute(
-				"ALTER TABLE delivery_status ADD COLUMN IF NOT EXISTS delivered BOOLEAN DEFAULT false");
-			log.info("ensureSchema: delivery_status.delivered OK");
-		} catch (Exception e) {
-			log.warn("ensureSchema: could not add delivery_status.delivered — {}", e.getMessage());
-		}
-		try {
-			jdbcTemplate.execute("""
-				DO $$
-				BEGIN
-				    IF NOT EXISTS (
-				        SELECT 1 FROM pg_constraint WHERE conname = 'uq_delivery_assignments_dire_id'
-				    ) THEN
-				        ALTER TABLE delivery_assignments ADD CONSTRAINT uq_delivery_assignments_dire_id UNIQUE (dire_id);
-				    END IF;
-				END$$
-				""");
-			log.info("ensureSchema: delivery_assignments UNIQUE(dire_id) OK");
-		} catch (Exception e) {
-			log.warn("ensureSchema: UNIQUE(dire_id) on delivery_assignments skipped — {}", e.getMessage());
-		}
-		// UNIQUE on delivery_status.dire_id — required for ON CONFLICT (dire_id) upsert
-		try {
-			jdbcTemplate.execute("""
-				DO $$
-				BEGIN
-				    IF NOT EXISTS (
-				        SELECT 1 FROM pg_constraint WHERE conname = 'uq_delivery_status_dire_id'
-				    ) THEN
-				        ALTER TABLE delivery_status ADD CONSTRAINT uq_delivery_status_dire_id UNIQUE (dire_id);
-				    END IF;
-				END$$
-				""");
-			log.info("ensureSchema: delivery_status UNIQUE(dire_id) OK");
-		} catch (Exception e) {
-			log.warn("ensureSchema: UNIQUE(dire_id) on delivery_status skipped — {}", e.getMessage());
-		}
 	}
 
 	public DeliveryLoginResponse findByMobile(String mobile) {
@@ -168,6 +92,9 @@ public class DeliveryRepository {
                     d.getTotalPaymentAmount(), d.getPaymentModeDbValue(),
                     picklistNo, d.getReason(), d.getLat(), d.getLon());
 
+            // ── 3. Payment details — one row per payment mode ─────────────────────
+            upsertPaymentDetails(direId, d.getPaymentModes());
+
             log.info("upsertByDireId: completed for direId={}, picklistNo={}", direId, picklistNo);
         } catch (Exception e) {
             log.error("upsertByDireId failed: direId={}, error={}", direId, e.getMessage(), e);
@@ -175,65 +102,106 @@ public class DeliveryRepository {
         }
     }
 
-	public void saveOrUpdate(DeliveryRequest request) {
-        log.info("saveOrUpdate: deliveryBoyId={}, picklistCount={}",
-                request.getDeliveryBoyId(),
-                request.getPicklistNos() != null ? request.getPicklistNos().size() : 0);
+	/**
+	 * Replaces the payment_details row for a dire_id.
+	 * Single row per transaction — mode amounts flattened into dedicated columns
+	 * (cash_amount, upi_amount, cheque_amount, neft_amount) with their refs.
+	 */
+	public void upsertPaymentDetails(Long direId,
+	        List<com.api.distr.docs.sales.dto.PaymentModeEntry> modes) {
         try {
-            List<String> picklistNos = request.getPicklistNos();
-            List<Long>   direIds     = request.getDireIds();
-            boolean hasDireIds = direIds != null && direIds.size() == picklistNos.size();
+            // Replace previous row for this transaction
+            jdbcTemplate.update("DELETE FROM payment_details WHERE dire_id = ?", direId);
 
-            String sqlWithDireId = """
-                        INSERT INTO delivery_assignments
-                        (dire_id, delivery_boy_id, car_no, driver_name, mobile, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                        ON CONFLICT (dire_id)
-                        DO UPDATE SET
-                            delivery_boy_id = EXCLUDED.delivery_boy_id,
-                            car_no          = EXCLUDED.car_no,
-                            driver_name     = EXCLUDED.driver_name,
-                            mobile          = EXCLUDED.mobile,
-                            updated_at      = EXCLUDED.updated_at
-                    """;
+            if (modes == null || modes.isEmpty()) {
+                log.info("upsertPaymentDetails: no payment modes for direId={}", direId);
+                return;
+            }
 
-            String sqlLookupDireId = """
-                        INSERT INTO delivery_assignments
-                        (dire_id, delivery_boy_id, car_no, driver_name, mobile, updated_at)
-                        VALUES (
-                            (SELECT dire_id FROM stage_sales_entery WHERE picklist_no = ? LIMIT 1),
-                            ?, ?, ?, ?, ?
-                        )
-                        ON CONFLICT (dire_id)
-                        DO UPDATE SET
-                            delivery_boy_id = EXCLUDED.delivery_boy_id,
-                            car_no          = EXCLUDED.car_no,
-                            driver_name     = EXCLUDED.driver_name,
-                            mobile          = EXCLUDED.mobile,
-                            updated_at      = EXCLUDED.updated_at
-                    """;
+            double cashAmt = 0, upiAmt = 0, chequeAmt = 0, neftAmt = 0, creditAmt = 0;
+            String upiRef = null, chequeNo = null, chequeBank = null, neftRef = null;
 
-            for (int i = 0; i < picklistNos.size(); i++) {
-                String picklistNo = picklistNos.get(i);
-                if (hasDireIds) {
-                    jdbcTemplate.update(sqlWithDireId,
-                            direIds.get(i),
-                            request.getDeliveryBoyId(),
-                            request.getCar().getCarNo(),
-                            request.getCar().getDriverName(),
-                            request.getCar().getMobile(),
-                            LocalDateTime.now());
-                } else {
-                    jdbcTemplate.update(sqlLookupDireId,
-                            picklistNo,
-                            request.getDeliveryBoyId(),
-                            request.getCar().getCarNo(),
-                            request.getCar().getDriverName(),
-                            request.getCar().getMobile(),
-                            LocalDateTime.now());
+            for (com.api.distr.docs.sales.dto.PaymentModeEntry m : modes) {
+                String mode = m.getMode() != null ? m.getMode().toUpperCase() : "";
+                switch (mode) {
+                    case "CASH" -> cashAmt += m.getAmount();
+                    case "UPI" -> {
+                        upiAmt += m.getAmount();
+                        if (m.getReferenceNo() != null) upiRef = m.getReferenceNo();
+                    }
+                    case "CHEQUE" -> {
+                        chequeAmt += m.getAmount();
+                        if (m.getChequeNo() != null) chequeNo   = m.getChequeNo();
+                        if (m.getBankName() != null) chequeBank = m.getBankName();
+                    }
+                    case "NEFT", "BANK_TRANSFER" -> {
+                        neftAmt += m.getAmount();
+                        if (m.getReferenceNo() != null) neftRef = m.getReferenceNo();
+                    }
+                    case "CREDIT" -> creditAmt += m.getAmount();
+                    default -> cashAmt += m.getAmount(); // unknown modes counted as cash
                 }
             }
-            log.info("saveOrUpdate: completed for deliveryBoyId={}", request.getDeliveryBoyId());
+            double total = cashAmt + upiAmt + chequeAmt + neftAmt + creditAmt;
+
+            jdbcTemplate.update("""
+                    INSERT INTO payment_details
+                        (dire_id, total_amount, return_amount, net_amount,
+                         cash_amount,
+                         upi_amount, upi_ref_no,
+                         cheque_amount, cheque_no, cheque_bank,
+                         neft_amount, neft_ref_no,
+                         credit_amount,
+                         payment_status, payment_date, created_at)
+                    VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_DATE, NOW())
+                    """,
+                    direId, total, total,
+                    cashAmt,
+                    upiAmt, upiRef,
+                    chequeAmt, chequeNo, chequeBank,
+                    neftAmt, neftRef,
+                    creditAmt,
+                    total > 0 ? "paid" : "pending");
+
+            log.info("upsertPaymentDetails: direId={}, total={}, cash={}, upi={}, cheque={}, neft={}, credit={}",
+                    direId, total, cashAmt, upiAmt, chequeAmt, neftAmt, creditAmt);
+        } catch (Exception e) {
+            // Payment details are supplementary — never fail the main delivery update
+            log.error("upsertPaymentDetails failed: direId={}, error={}", direId, e.getMessage(), e);
+        }
+    }
+
+	public void saveOrUpdate(DeliveryRequest request) {
+        List<Long> direIds = request.getDireIds();
+        log.info("saveOrUpdate: deliveryBoyId={}, direIdCount={}", request.getDeliveryBoyId(),
+                direIds != null ? direIds.size() : 0);
+        if (direIds == null || direIds.isEmpty())
+            throw new IllegalArgumentException("direIds is required for assignment");
+        try {
+            String sql = """
+                        INSERT INTO delivery_assignments
+                        (dire_id, delivery_boy_id, car_no, driver_name, mobile, updated_at, status)
+                        VALUES (?, ?, ?, ?, ?, ?, 9)
+                        ON CONFLICT (dire_id)
+                        DO UPDATE SET
+                            delivery_boy_id = EXCLUDED.delivery_boy_id,
+                            car_no          = EXCLUDED.car_no,
+                            driver_name     = EXCLUDED.driver_name,
+                            mobile          = EXCLUDED.mobile,
+                            updated_at      = EXCLUDED.updated_at,
+                            status          = 9
+                    """;
+
+            for (Long direId : direIds) {
+                jdbcTemplate.update(sql,
+                        direId,
+                        request.getDeliveryBoyId(),
+                        request.getCar().getCarNo(),
+                        request.getCar().getDriverName(),
+                        request.getCar().getMobile(),
+                        LocalDateTime.now());
+            }
+            log.info("saveOrUpdate: completed {} assignments for deliveryBoyId={}", direIds.size(), request.getDeliveryBoyId());
         } catch (Exception e) {
             log.error("saveOrUpdate failed: deliveryBoyId={}, error={}", request.getDeliveryBoyId(), e.getMessage(), e);
             throw e;
@@ -358,42 +326,30 @@ public class DeliveryRepository {
 	}
 
 	/**
-	 * Upsert a full Smart Route assignment list.
-	 * Writes sequence, lat, lon, address, delivery_boy_id per stop.
-	 * Sets status = 0 (PENDING) and delivery_date = today.
+	 * Saves the route order for already-assigned stops.
+	 * Only updates sequence (and updated_at) — assignment, status, and coordinates untouched.
 	 */
 	public void saveSmartRouteAssignments(java.util.List<SmartRouteAssignItem> items) {
         log.info("saveSmartRouteAssignments: {} stops", items.size());
         try {
             String sql = """
-                    INSERT INTO delivery_assignments
-                        (dire_id, delivery_boy_id, sequence, lat, lon, address, delivery_date, updated_at, status)
-                    VALUES (
-                        (SELECT dire_id FROM stage_sales_entery WHERE picklist_no = ? LIMIT 1),
-                        ?, ?, ?, ?, ?, CURRENT_DATE, ?, 0
-                    )
-                    ON CONFLICT (dire_id)
-                    DO UPDATE SET
-                        delivery_boy_id = EXCLUDED.delivery_boy_id,
-                        sequence        = EXCLUDED.sequence,
-                        lat             = EXCLUDED.lat,
-                        lon             = EXCLUDED.lon,
-                        address         = EXCLUDED.address,
-                        delivery_date   = EXCLUDED.delivery_date,
-                        updated_at      = EXCLUDED.updated_at,
-                        status          = 0
+                    UPDATE delivery_assignments
+                    SET    sequence   = ?,
+                           updated_at = ?
+                    WHERE  dire_id = ?
                     """;
+            int updated = 0;
             for (SmartRouteAssignItem item : items) {
-                jdbcTemplate.update(sql,
-                        item.picklist_no,
-                        item.deliveryBoyId,
+                if (item.direId == null) {
+                    log.warn("saveSmartRouteAssignments: skipping stop without direId (sequence={})", item.sequence);
+                    continue;
+                }
+                updated += jdbcTemplate.update(sql,
                         item.sequence,
-                        item.lat     != null ? item.lat     : 0.0,
-                        item.lon     != null ? item.lon     : 0.0,
-                        item.address != null ? item.address : "",
-                        LocalDateTime.now());
+                        LocalDateTime.now(),
+                        item.direId);
             }
-            log.info("saveSmartRouteAssignments: completed {} stops", items.size());
+            log.info("saveSmartRouteAssignments: sequence updated for {} of {} stops", updated, items.size());
         } catch (Exception e) {
             log.error("saveSmartRouteAssignments failed: stopCount={}, error={}", items.size(), e.getMessage(), e);
             throw e;
@@ -419,20 +375,41 @@ public class DeliveryRepository {
 		}
 	}
 
+	/** Accept newly-assigned deliveries (status 9 → 0 PENDING). */
+	public int acceptAssignments(List<Long> direIds) {
+		log.info("acceptAssignments: direIds={}", direIds);
+		int rows = 0;
+		for (Long direId : direIds) {
+			rows += jdbcTemplate.update(
+				"UPDATE delivery_assignments SET status = 0, updated_at = NOW() WHERE dire_id = ? AND status = 9",
+				direId);
+		}
+		log.info("acceptAssignments: updated {} of {} row(s)", rows, direIds.size());
+		return rows;
+	}
+
+	/** Reject newly-assigned deliveries (status 9 → 8 REJECTED). */
+	public int rejectAssignments(List<Long> direIds) {
+		log.info("rejectAssignments: direIds={}", direIds);
+		int rows = 0;
+		for (Long direId : direIds) {
+			rows += jdbcTemplate.update(
+				"UPDATE delivery_assignments SET status = 8, updated_at = NOW() WHERE dire_id = ? AND status = 9",
+				direId);
+		}
+		log.info("rejectAssignments: updated {} of {} row(s)", rows, direIds.size());
+		return rows;
+	}
+
     public List<SalesEntryDto> getAllSalesByStatus(String deliveryId, String statusFilter) {
         String statusCondition = switch (statusFilter) {
             case "delivered" -> "da.status = 2";
             case "cancelled" -> "da.status = 1";
-            case "all"       -> "da.status IN (0, 1, 2)";
-            default          -> "da.status = 0";
+            case "all"       -> "da.status IN (0, 1, 2, 9)";
+            case "new"       -> "da.status = 9";
+            default          -> "da.status IN (0, 9)";
         };
-        String danNotClosedCondition =
-            " AND NOT EXISTS (" +
-            "   SELECT 1 FROM dayend_approval dap" +
-            "   WHERE dap.delivery_id::text = da.delivery_boy_id" +
-            "     AND dap.status = 'CLOSED'" +
-            ")";
-        String sql = QueryConstants.SELECT_DELIVERY_ASSIGN_BASE + statusCondition + danNotClosedCondition;
+        String sql = QueryConstants.SELECT_DELIVERY_ASSIGN_BASE + statusCondition + " AND da.status != 10";
         log.info("getAllSalesByStatus: deliveryId={}, filter={}", deliveryId, statusFilter);
         try {
             List<SalesEntryDto> result = jdbcTemplate.query(sql, new Object[]{deliveryId}, (rs, rowNum) -> {
@@ -461,13 +438,88 @@ public class DeliveryRepository {
 			Integer.class);
 	}
 
+	public List<com.api.distr.docs.sales.dto.AssignmentDTO> getAllAssignments(
+            String fromDate, String toDate, String agentId, Integer status) {
+
+        StringBuilder sql = new StringBuilder("""
+            SELECT
+                sse.dire_id                              AS direId,
+                sse.sales_order_no                       AS invoiceNo,
+                sse.customer_no                          AS customerNo,
+                sse.cust_desc                            AS custDesc,
+                cd.cust_mobile                           AS custMobile,
+                sse.net_value::text                      AS netValue,
+                TO_CHAR(sse.billing_date, 'DD/MM/YYYY')  AS billingDate,
+                TO_CHAR(da.delivery_date, 'DD/MM/YYYY')  AS deliveryDate,
+                da.delivery_boy_id                       AS agentId,
+                COALESCE(dm.delivery_name, 'Unknown')    AS agentName,
+                da.status                                AS assignStatus,
+                CASE da.status
+                    WHEN 0  THEN 'PENDING'
+                    WHEN 9  THEN 'ASSIGNED'
+                    WHEN 8  THEN 'REJECTED'
+                    WHEN 2  THEN 'DELIVERED'
+                    WHEN 10 THEN 'CLOSED'
+                    ELSE 'FAILED'
+                END                                      AS statusLabel
+            FROM delivery_assignments da
+            JOIN stage_sales_entery sse ON sse.dire_id = da.dire_id
+            LEFT JOIN customer_details cd ON cd.cust_no = sse.customer_no
+            LEFT JOIN delivery_master dm ON dm.delivery_id::text = da.delivery_boy_id
+            WHERE 1=1
+            """);
+
+        java.util.List<Object> params = new java.util.ArrayList<>();
+
+        if (fromDate != null && !fromDate.isBlank()) {
+            sql.append(" AND sse.billing_date >= TO_DATE(?, 'DD/MM/YYYY')");
+            params.add(fromDate);
+        }
+        if (toDate != null && !toDate.isBlank()) {
+            sql.append(" AND sse.billing_date <= TO_DATE(?, 'DD/MM/YYYY')");
+            params.add(toDate);
+        }
+        if (agentId != null && !agentId.isBlank()) {
+            sql.append(" AND da.delivery_boy_id = ?");
+            params.add(agentId);
+        }
+        sql.append(" AND da.status != 10");
+        if (status != null) {
+            sql.append(" AND da.status = ?");
+            params.add(status);
+        }
+        sql.append(" ORDER BY da.updated_at DESC NULLS LAST, dm.delivery_name");
+
+        log.info("getAllAssignments: fromDate={}, toDate={}, agentId={}, status={}", fromDate, toDate, agentId, status);
+        try {
+            List<com.api.distr.docs.sales.dto.AssignmentDTO> result =
+                jdbcTemplate.query(sql.toString(), params.toArray(), (rs, rowNum) -> {
+                    com.api.distr.docs.sales.dto.AssignmentDTO dto = new com.api.distr.docs.sales.dto.AssignmentDTO();
+                    dto.setDireId(rs.getLong("direId"));
+                    dto.setInvoiceNo(rs.getString("invoiceNo"));
+                    dto.setCustomerNo(rs.getString("customerNo"));
+                    dto.setCustDesc(rs.getString("custDesc"));
+                    dto.setCustMobile(rs.getString("custMobile"));
+                    dto.setNetValue(rs.getString("netValue"));
+                    dto.setBillingDate(rs.getString("billingDate"));
+                    dto.setDeliveryDate(rs.getString("deliveryDate"));
+                    dto.setAgentId(rs.getString("agentId"));
+                    dto.setAgentName(rs.getString("agentName"));
+                    dto.setAssignStatus(rs.getInt("assignStatus"));
+                    dto.setStatusLabel(rs.getString("statusLabel"));
+                    return dto;
+                });
+            log.info("getAllAssignments: returned {} rows", result.size());
+            return result;
+        } catch (Exception e) {
+            log.error("getAllAssignments failed: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
 	public List<SalesEntryDto> getAllSales(String deliveryId) {
         String sql = QueryConstants.SELECT_DELIVERY_ASSIGN + deliveryId + "'" +
-            " AND NOT EXISTS (" +
-            "   SELECT 1 FROM dayend_approval dap" +
-            "   WHERE dap.delivery_id::text = da.delivery_boy_id" +
-            "     AND dap.status = 'CLOSED'" +
-            ")";
+            " AND da.status != 10";
         log.info("getAllSales: deliveryId={}", deliveryId);
         try {
             List<SalesEntryDto> result = jdbcTemplate.query(sql, (rs, rowNum) -> {

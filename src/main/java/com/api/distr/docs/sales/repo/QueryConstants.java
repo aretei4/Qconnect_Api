@@ -33,7 +33,7 @@ public interface QueryConstants {
             "FROM stage_sales_entery sse " +
             "JOIN delivery_assignments da ON da.dire_id = sse.dire_id " +
             "LEFT JOIN customer_details cd ON cd.cust_no = sse.customer_no " +
-            "WHERE da.status = 0 AND da.delivery_boy_id = '";
+            "WHERE da.status IN (0, 9) AND da.delivery_boy_id = '";
 
     // Base query without status filter — append status condition + delivery_boy_id before executing
     String SELECT_DELIVERY_ASSIGN_BASE =
