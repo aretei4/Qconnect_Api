@@ -17,6 +17,11 @@ import com.api.distr.docs.sales.dto.SalesEntryDto;
 import com.api.distr.docs.sales.dto.SmartRouteAssignItem;
 import com.api.distr.docs.sales.repo.DeliveryRepository;
 import com.api.distr.docs.upload.CustomerRepository;
+import com.api.distr.docs.user.User;
+import com.api.distr.docs.user.UserRepository;
+import com.api.distr.docs.security.UserJwtService;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Service
 public class DeliveryService {
@@ -28,20 +33,85 @@ public class DeliveryService {
     @Autowired
     CustomerRepository ccustRepo;
 
+    @Autowired
+    UserRepository userRepository;
+
+    @Autowired
+    PasswordEncoder passwordEncoder;
+
+    @Autowired
+    UserJwtService userJwtService;
+
     public DeliveryService(DeliveryRepository deliveryRepository) {
         this.deliveryRepository = deliveryRepository;
     }
 
-    public DeliveryLoginResponse login(String mobileNumber) {
+    public DeliveryLoginResponse login(String mobileNumber, String password) {
         log.info("login: mobileNumber={}", mobileNumber);
-        try {
-            DeliveryLoginResponse response = deliveryRepository.findByMobile(mobileNumber);
-            log.info("login: success for mobileNumber={}, deliveryId={}", mobileNumber, response.getDeliveryId());
-            return response;
-        } catch (Exception e) {
-            log.error("login failed: mobileNumber={}, error={}", mobileNumber, e.getMessage(), e);
-            throw e;
+        boolean otpLogin = (password == null || password.isBlank());
+
+        if (otpLogin) {
+            // OTP login: check users table FIRST so admin/manager always get their real role.
+            // Try username match first, then phone match (users may store mobile in phone column).
+            java.util.Optional<User> userOpt = userRepository.findByUsername(mobileNumber);
+            if (!userOpt.isPresent()) {
+                userOpt = userRepository.findByPhone(mobileNumber);
+                if (userOpt.isPresent())
+                    log.info("login(otp): matched by phone column for mobile={}", mobileNumber);
+            }
+            if (userOpt.isPresent()) {
+                User u = userOpt.get();
+                if (!u.isEnabled()) {
+                    log.warn("login(otp): user account disabled: {}", mobileNumber);
+                    throw new RuntimeException("Account is disabled");
+                }
+                log.info("login(otp): found in users table, userId={}, role={}", u.getId(), u.getRole());
+                String displayName = (u.getFullName() != null && !u.getFullName().isBlank())
+                        ? u.getFullName() : u.getUsername();
+                String jwt = userJwtService.generateToken(u.getUsername(), "ROLE_" + u.getRole().name());
+                return new DeliveryLoginResponse(u.getId(), displayName, 0, u.getRole().name(), jwt);
+            }
+            // Delivery agent (only in delivery_master, no users-table record)
+            try {
+                DeliveryLoginResponse r = deliveryRepository.findByMobile(mobileNumber);
+                log.info("login(otp): found in delivery_master, deliveryId={}", r.getDeliveryId());
+                return new DeliveryLoginResponse(r.getDeliveryId(), r.getDeliveryName(), r.getBuId(), "DELIVERY", null);
+            } catch (EmptyResultDataAccessException e) {
+                log.error("login(otp): mobile not found anywhere: {}", mobileNumber);
+                throw new RuntimeException("Invalid credentials");
+            }
         }
+
+        // Password login: delivery_master first, users table as fallback
+        try {
+            DeliveryLoginResponse r = deliveryRepository.findByMobile(mobileNumber);
+            log.info("login(pwd): found in delivery_master, deliveryId={}", r.getDeliveryId());
+            return new DeliveryLoginResponse(r.getDeliveryId(), r.getDeliveryName(), r.getBuId(), "DELIVERY", null);
+        } catch (EmptyResultDataAccessException notInDelivery) {
+            log.info("login(pwd): mobile not found in delivery_master, trying users table");
+        }
+
+        User user = userRepository.findByUsername(mobileNumber)
+                .orElseThrow(() -> {
+                    log.error("login(pwd): mobile not found in users table either: {}", mobileNumber);
+                    return new RuntimeException("Invalid credentials");
+                });
+
+        if (!user.isEnabled()) {
+            log.warn("login(pwd): user account disabled: {}", mobileNumber);
+            throw new RuntimeException("Account is disabled");
+        }
+
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            log.warn("login(pwd): invalid password for user: {}", mobileNumber);
+            throw new RuntimeException("Invalid credentials");
+        }
+
+        log.info("login(pwd): found in users table, userId={}", user.getId());
+        String displayName = (user.getFullName() != null && !user.getFullName().isBlank())
+                ? user.getFullName() : user.getUsername();
+        String jwt = userJwtService.generateToken(user.getUsername(), "ROLE_" + user.getRole().name());
+        return new DeliveryLoginResponse(user.getId(), displayName, 0, user.getRole().name(), jwt);
     }
 
     @Transactional

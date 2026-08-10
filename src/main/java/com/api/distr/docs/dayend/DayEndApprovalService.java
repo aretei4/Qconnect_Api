@@ -20,6 +20,36 @@ public class DayEndApprovalService {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    /** Who/when for each approval stage is recorded here (replaced the *_approved_at columns). */
+    @Autowired
+    private com.api.distr.docs.dan.DanApprovalRepository approvalRepository;
+
+    /** The agent's most recent dayend_approval id — the DAN the lifecycle event belongs to. */
+    private Long openDanId(Long deliveryId) {
+        try {
+            return jdbcTemplate.queryForObject(
+                    "SELECT id FROM dayend_approval WHERE delivery_id = ? ORDER BY id DESC LIMIT 1",
+                    Long.class, deliveryId);
+        } catch (Exception e) {
+            log.warn("openDanId: could not resolve DAN for deliveryId={}", deliveryId);
+            return null;
+        }
+    }
+
+    /** Authenticated username, or "system" when unauthenticated. */
+    private String currentUser() {
+        try {
+            var auth = org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication();
+            if (auth != null
+                    && !(auth instanceof org.springframework.security.authentication.AnonymousAuthenticationToken)
+                    && auth.getName() != null && !auth.getName().isBlank()) {
+                return auth.getName();
+            }
+        } catch (Exception ignored) { }
+        return "system";
+    }
+
     // ✅ Date Parser
     private LocalDate parseDate(String date) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
@@ -38,26 +68,31 @@ public class DayEndApprovalService {
         log.info("startDayEnd: deliveryId={}, date={}", dto.getDeliveryId(), date);
 
         try {
-            String checkSql = "SELECT COUNT(*) FROM dayend_approval WHERE delivery_id = ? AND status IN ('STARTED','PENDING','REJECTED')";
+            // "open" statuses = STARTED, PENDING, REJECTED
+            final String OPEN = "(" + DayEndStatus.STARTED + "," + DayEndStatus.PENDING + "," + DayEndStatus.REJECTED + ")";
+            String checkSql = "SELECT COUNT(*) FROM dayend_approval WHERE delivery_id = ? AND status IN " + OPEN;
             Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, dto.getDeliveryId());
 
             if (count != null && count > 0) {
                 log.info("startDayEnd: resetting existing open record to STARTED for deliveryId={}", dto.getDeliveryId());
                 jdbcTemplate.update(
                     "UPDATE dayend_approval " +
-                    "SET status = 'STARTED', start_time = NOW(), total_amount = 0, " +
+                    "SET status = " + DayEndStatus.STARTED + ", start_time = NOW(), total_amount = 0, " +
                     "    reject_reason = NULL, approved_at = NULL, request_date = NULL " +
-                    "WHERE delivery_id = ? AND status IN ('STARTED','PENDING','REJECTED')",
+                    "WHERE delivery_id = ? AND status IN " + OPEN,
                     dto.getDeliveryId());
             } else {
                 log.info("startDayEnd: inserting new STARTED record for deliveryId={}, date={}", dto.getDeliveryId(), date);
-                String insertSql = """
-                    INSERT INTO dayend_approval
-                    (delivery_id, delivery_date, start_time, status, total_amount)
-                    VALUES (?, ?, NOW(), 'STARTED', 0)
-                """;
+                String insertSql =
+                    "INSERT INTO dayend_approval " +
+                    "(delivery_id, delivery_date, start_time, status, total_amount) " +
+                    "VALUES (?, ?, NOW(), " + DayEndStatus.STARTED + ", 0)";
                 jdbcTemplate.update(insertSql, dto.getDeliveryId(), date);
             }
+
+            // Log the DAN-created event against the (possibly just-inserted) open record
+            approvalRepository.logEvent(openDanId(dto.getDeliveryId()), "STARTED", "CREATED",
+                    currentUser(), "Day end started");
 
             // Move all ASSIGNED (9) rows for this agent to PENDING (0) so delivery can begin
             int moved = jdbcTemplate.update(
@@ -94,12 +129,13 @@ public class DayEndApprovalService {
             try {
                 String statusSql =
                     "SELECT status FROM dayend_approval WHERE delivery_id = ? ORDER BY id DESC LIMIT 1";
-                String currentStatus = jdbcTemplate.queryForObject(
-                    statusSql, String.class, dto.getDeliveryId());
-                if ("PENDING".equals(currentStatus)) {
+                Integer currentStatus = jdbcTemplate.queryForObject(
+                    statusSql, Integer.class, dto.getDeliveryId());
+                if (currentStatus != null
+                        && (currentStatus == DayEndStatus.PENDING || currentStatus == DayEndStatus.SK_APPROVED)) {
                     throw new IllegalStateException(
-                        "Day end for this agent is already submitted and awaiting admin approval. " +
-                        "Please wait for the admin to approve or reject before re-submitting.");
+                        "Day end for this agent is already submitted and awaiting approval. " +
+                        "Please wait for the approval or rejection before re-submitting.");
                 }
             } catch (EmptyResultDataAccessException ignored) {
                 // no record yet — allowed to proceed
@@ -127,25 +163,29 @@ public class DayEndApprovalService {
                     "before closing the day.");
             }
 
-            String checkSql = "SELECT COUNT(*) FROM dayend_approval WHERE delivery_id = ? AND status IN ('STARTED','REJECTED')";
+            final String STARTED_OR_REJECTED = "(" + DayEndStatus.STARTED + "," + DayEndStatus.REJECTED + ")";
+            String checkSql = "SELECT COUNT(*) FROM dayend_approval WHERE delivery_id = ? AND status IN " + STARTED_OR_REJECTED;
             Integer count   = jdbcTemplate.queryForObject(checkSql, Integer.class, dto.getDeliveryId());
 
             if (count != null && count > 0) {
                 log.info("createDayEnd: updating existing record to PENDING for deliveryId={}", dto.getDeliveryId());
                 jdbcTemplate.update(
                     "UPDATE dayend_approval " +
-                    "SET status = 'PENDING', request_date = NOW(), total_amount = ?, picklist_nos = ?, " +
+                    "SET status = " + DayEndStatus.PENDING + ", request_date = NOW(), total_amount = ?, picklist_nos = ?, " +
                     "    reject_reason = NULL, approved_at = NULL " +
-                    "WHERE delivery_id = ? AND status IN ('STARTED','REJECTED')",
+                    "WHERE delivery_id = ? AND status IN " + STARTED_OR_REJECTED,
                     totalAmt, picklistNosStr, dto.getDeliveryId());
             } else {
                 log.info("createDayEnd: no STARTED row found — inserting new PENDING record for deliveryId={}", dto.getDeliveryId());
                 jdbcTemplate.update(
                     "INSERT INTO dayend_approval " +
                     "(delivery_id, delivery_date, request_date, status, total_amount, picklist_nos) " +
-                    "VALUES (?, ?, NOW(), 'PENDING', ?, ?)",
+                    "VALUES (?, ?, NOW(), " + DayEndStatus.PENDING + ", ?, ?)",
                     dto.getDeliveryId(), date, totalAmt, picklistNosStr);
             }
+
+            approvalRepository.logEvent(openDanId(dto.getDeliveryId()), "SUBMITTED", "CREATED",
+                    currentUser(), "Submitted for approval — " + totalAmt);
 
         } catch (Exception e) {
             log.error("createDayEnd failed: deliveryId={}, date={}, error={}", dto.getDeliveryId(), date, e.getMessage(), e);
@@ -153,27 +193,45 @@ public class DayEndApprovalService {
         }
     }
 
-    // ✅ APPROVE BY ID
+    // ✅ APPROVE BY ID — two-stage: STOREKEEPER (PENDING→SK_APPROVED) or ACCOUNTANT (SK_APPROVED/PENDING→APPROVED)
     public void approveDayEndById(DayEndDto dto) {
         if (dto.getDayendId() == null)
             throw new RuntimeException("dayendId is required");
 
-        log.info("approveDayEndById: dayendId={}", dto.getDayendId());
+        String role = dto.getApproverRole();
+        log.info("approveDayEndById: dayendId={}, approverRole={}", dto.getDayendId(), role);
         try {
-            int updated = jdbcTemplate.update("""
-                UPDATE dayend_approval
-                SET status = 'APPROVED',
-                    approved_at = NOW(),
-                    reject_reason = NULL
-                WHERE id = ?
-                  AND status = 'PENDING'
-            """, dto.getDayendId());
-
-            if (updated == 0) {
-                log.warn("approveDayEndById: no PENDING record found for dayendId={}", dto.getDayendId());
-                throw new RuntimeException("No pending DayEnd found to approve");
+            int updated;
+            if ("STOREKEEPER".equalsIgnoreCase(role)) {
+                // Stage 1: PENDING → SK_APPROVED
+                updated = jdbcTemplate.update(
+                    "UPDATE dayend_approval " +
+                    "SET status = " + DayEndStatus.SK_APPROVED + ", reject_reason = NULL " +
+                    "WHERE id = ? AND status = " + DayEndStatus.PENDING,
+                    dto.getDayendId());
+                if (updated == 0) {
+                    log.warn("approveDayEndById(SK): no PENDING record for dayendId={}", dto.getDayendId());
+                    throw new RuntimeException("No pending DayEnd found for storekeeper approval");
+                }
+                // Who/when is captured in dan_approval_log (replaces storekeeper_approved_at)
+                approvalRepository.insert(dto.getDayendId(), "STOREKEEPER", "APPROVED",
+                        currentUser(), null, null);
+                log.info("approveDayEndById(SK): SK_APPROVED dayendId={}", dto.getDayendId());
+            } else {
+                // Stage 2 (ACCOUNTANT / default): SK_APPROVED or PENDING → APPROVED
+                updated = jdbcTemplate.update(
+                    "UPDATE dayend_approval " +
+                    "SET status = " + DayEndStatus.APPROVED + ", approved_at = NOW(), reject_reason = NULL " +
+                    "WHERE id = ? AND status IN (" + DayEndStatus.PENDING + "," + DayEndStatus.SK_APPROVED + ")",
+                    dto.getDayendId());
+                if (updated == 0) {
+                    log.warn("approveDayEndById(ACCT): no approvable record for dayendId={}", dto.getDayendId());
+                    throw new RuntimeException("No approvable DayEnd found for accountant approval");
+                }
+                approvalRepository.insert(dto.getDayendId(), "ACCOUNTS", "APPROVED",
+                        currentUser(), null, null);
+                log.info("approveDayEndById(ACCT): APPROVED dayendId={}", dto.getDayendId());
             }
-            log.info("approveDayEndById: approved dayendId={}", dto.getDayendId());
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
@@ -182,7 +240,7 @@ public class DayEndApprovalService {
         }
     }
 
-    // ❌ REJECT BY ID
+    // ❌ REJECT BY ID — allowed from PENDING or SK_APPROVED
     public void rejectDayEndById(DayEndDto dto) {
         if (dto.getDayendId() == null)
             throw new RuntimeException("dayendId is required");
@@ -191,19 +249,19 @@ public class DayEndApprovalService {
 
         log.info("rejectDayEndById: dayendId={}, reason={}", dto.getDayendId(), dto.getRejectReason());
         try {
-            int updated = jdbcTemplate.update("""
-                UPDATE dayend_approval
-                SET status = 'REJECTED',
-                    reject_reason = ?,
-                    approved_at = NULL
-                WHERE id = ?
-                  AND status = 'PENDING'
-            """, dto.getRejectReason(), dto.getDayendId());
+            int updated = jdbcTemplate.update(
+                "UPDATE dayend_approval " +
+                "SET status = " + DayEndStatus.REJECTED + ", reject_reason = ?, approved_at = NULL " +
+                "WHERE id = ? AND status IN (" + DayEndStatus.PENDING + "," + DayEndStatus.SK_APPROVED + ")",
+                dto.getRejectReason(), dto.getDayendId());
 
             if (updated == 0) {
-                log.warn("rejectDayEndById: no PENDING record found for dayendId={}", dto.getDayendId());
+                log.warn("rejectDayEndById: no PENDING/SK_APPROVED record for dayendId={}", dto.getDayendId());
                 throw new RuntimeException("No pending DayEnd found to reject");
             }
+            approvalRepository.insert(dto.getDayendId(),
+                    "STOREKEEPER".equalsIgnoreCase(dto.getApproverRole()) ? "STOREKEEPER" : "ACCOUNTS",
+                    "REJECTED", currentUser(), null, dto.getRejectReason());
             log.info("rejectDayEndById: rejected dayendId={}", dto.getDayendId());
         } catch (RuntimeException e) {
             throw e;
@@ -238,15 +296,15 @@ public class DayEndApprovalService {
                 FROM dayend_approval da
                 LEFT JOIN delivery_master dm ON da.delivery_id = dm.delivery_id
                 WHERE da.delivery_date = CURRENT_DATE
-                  AND da.status IN ('STARTED', 'PENDING')
+                  AND da.status IN (%d, %d, %d)
                 ORDER BY da.start_time DESC
-            """;
+            """.formatted(DayEndStatus.STARTED, DayEndStatus.PENDING, DayEndStatus.SK_APPROVED);
 
             List<OnlineAgentDto> result = jdbcTemplate.query(sql, (rs, rowNum) -> {
                 OnlineAgentDto dto = new OnlineAgentDto();
                 dto.setDeliveryId(rs.getLong("delivery_id"));
                 dto.setDeliveryBoyName(rs.getString("delivery_boy_name"));
-                dto.setStatus(rs.getString("status"));
+                dto.setStatus(DayEndStatus.statusName(rs.getInt("status")));
                 dto.setTotalDeliveries(rs.getInt("total_deliveries"));
                 dto.setDeliveredCount(rs.getInt("delivered_count"));
                 dto.setTotalAmount(rs.getDouble("total_amount"));
@@ -263,7 +321,7 @@ public class DayEndApprovalService {
         }
     }
 
-    // 🔍 LIST (UNCHANGED)
+    // 🔍 LIST
     public List<DayEndResponseDto> getDayEndList(
             Long deliveryId,
             LocalDate fromDate,
@@ -299,7 +357,7 @@ public class DayEndApprovalService {
                     res.setDeliveryId(rs.getLong("delivery_id"));
                     res.setDeliveryBoyName(rs.getString("delivery_boy_name"));
                     res.setDeliveryDate(rs.getDate("delivery_date").toLocalDate());
-                    res.setStatus(rs.getString("status"));
+                    res.setStatus(DayEndStatus.statusName(rs.getInt("status")));
                     res.setTotalAmount(rs.getDouble("total_amount"));
                     res.setRejectReason(rs.getString("reject_reason"));
 

@@ -36,6 +36,7 @@ public class UserRepository {
         u.setPassword(rs.getString("password"));
         u.setFullName(rs.getString("full_name"));
         u.setEmail(rs.getString("email"));
+        u.setPhone(rs.getString("phone"));
         u.setRole(Role.valueOf(rs.getString("role")));
         u.setEnabled(rs.getBoolean("enabled"));
 
@@ -71,6 +72,14 @@ public class UserRepository {
         return result.stream().findFirst();
     }
 
+    public Optional<User> findByPhone(String phone) {
+        List<User> result = jdbc.query(
+            "SELECT * FROM users WHERE phone = ?",
+            USER_ROW_MAPPER, phone
+        );
+        return result.stream().findFirst();
+    }
+
     public boolean existsByUsername(String username) {
         Integer count = jdbc.queryForObject(
             "SELECT COUNT(*) FROM users WHERE username = ?",
@@ -102,8 +111,8 @@ public class UserRepository {
         jdbc.update(con -> {
             // PostgreSQL requires explicit column name to return the generated key reliably
             PreparedStatement ps = con.prepareStatement(
-                "INSERT INTO users (username, password, full_name, email, role, enabled, created_at, updated_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO users (username, password, full_name, email, phone, role, enabled, created_at, updated_at) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 new String[]{"id"}
             );
             LocalDateTime now = LocalDateTime.now();
@@ -111,10 +120,11 @@ public class UserRepository {
             ps.setString(2, user.getPassword());
             ps.setString(3, user.getFullName());
             ps.setString(4, user.getEmail());
-            ps.setString(5, user.getRole().name());
-            ps.setBoolean(6, user.isEnabled());
-            ps.setTimestamp(7, Timestamp.valueOf(now));
+            ps.setString(5, user.getPhone());
+            ps.setString(6, user.getRole().name());
+            ps.setBoolean(7, user.isEnabled());
             ps.setTimestamp(8, Timestamp.valueOf(now));
+            ps.setTimestamp(9, Timestamp.valueOf(now));
             return ps;
         }, keyHolder);
 
@@ -124,9 +134,10 @@ public class UserRepository {
 
     public User update(User user) {
         jdbc.update(
-            "UPDATE users SET full_name = ?, email = ?, role = ?, enabled = ?, password = ?, updated_at = ? WHERE id = ?",
+            "UPDATE users SET full_name = ?, email = ?, phone = ?, role = ?, enabled = ?, password = ?, updated_at = ? WHERE id = ?",
             user.getFullName(),
             user.getEmail(),
+            user.getPhone(),
             user.getRole().name(),
             user.isEnabled(),
             user.getPassword(),

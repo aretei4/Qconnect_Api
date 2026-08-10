@@ -39,7 +39,9 @@ public class DeliveryRepository {
                             new DeliveryLoginResponse(
                                     rs.getLong("delivery_id"),
                                     rs.getString("delivery_name"),
-                                    rs.getInt("bu_id")
+                                    rs.getInt("bu_id"),
+                                    "DELIVERY",
+                                    null   // delivery agents don't get a JWT
                             )
             );
         } catch (Exception e) {
@@ -72,27 +74,25 @@ public class DeliveryRepository {
                     WHERE  dire_id       = ?
                     """, d.isDelivered() ? 2 : 1, direId);
 
-            // ── 2. Upsert delivery_status — conflict on dire_id ───────────────────
+            // ── 2. Upsert delivery_status — payment columns NOT written here anymore;
+            //       all payment data lives in payment_details (step 3) ─────────────
             jdbcTemplate.update("""
                     INSERT INTO delivery_status
-                        (dire_id, delivery_id, delivered, otp, payment_amount, payment_mode,
+                        (dire_id, delivery_id, delivered, otp,
                          picklist_no, reason, lat, lon, delivery_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
                     ON CONFLICT (dire_id) DO UPDATE SET
                         delivered      = EXCLUDED.delivered,
                         otp            = EXCLUDED.otp,
-                        payment_amount = EXCLUDED.payment_amount,
-                        payment_mode   = EXCLUDED.payment_mode,
                         reason         = EXCLUDED.reason,
                         lat            = EXCLUDED.lat,
                         lon            = EXCLUDED.lon,
                         delivery_date  = NOW()
                     """,
                     direId, d.getDelivery_id(), d.isDelivered(), d.isOtp(),
-                    d.getTotalPaymentAmount(), d.getPaymentModeDbValue(),
                     picklistNo, d.getReason(), d.getLat(), d.getLon());
 
-            // ── 3. Payment details — one row per payment mode ─────────────────────
+            // ── 3. Payment details — the single source of truth for payments ──────
             upsertPaymentDetails(direId, d.getPaymentModes());
 
             log.info("upsertByDireId: completed for direId={}, picklistNo={}", direId, picklistNo);
@@ -144,6 +144,15 @@ public class DeliveryRepository {
             }
             double total = cashAmt + upiAmt + chequeAmt + neftAmt + creditAmt;
 
+            // return_amount = invoice net_value − total paid (0 when fully paid or net_value missing)
+            Double netValue = 0.0;
+            try {
+                netValue = jdbcTemplate.queryForObject(
+                        "SELECT COALESCE(CAST(net_value AS double precision), 0) FROM stage_sales_entery WHERE dire_id = ?",
+                        Double.class, direId);
+            } catch (Exception ignored) {}
+            double returnAmt = Math.max(0, (netValue != null ? netValue : 0.0) - total);
+
             jdbcTemplate.update("""
                     INSERT INTO payment_details
                         (dire_id, total_amount, return_amount, net_amount,
@@ -153,9 +162,9 @@ public class DeliveryRepository {
                          neft_amount, neft_ref_no,
                          credit_amount,
                          payment_status, payment_date, created_at)
-                    VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_DATE, NOW())
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_DATE, NOW())
                     """,
-                    direId, total, total,
+                    direId, total, returnAmt, total,
                     cashAmt,
                     upiAmt, upiRef,
                     chequeAmt, chequeNo, chequeBank,
@@ -163,8 +172,8 @@ public class DeliveryRepository {
                     creditAmt,
                     total > 0 ? "paid" : "pending");
 
-            log.info("upsertPaymentDetails: direId={}, total={}, cash={}, upi={}, cheque={}, neft={}, credit={}",
-                    direId, total, cashAmt, upiAmt, chequeAmt, neftAmt, creditAmt);
+            log.info("upsertPaymentDetails: direId={}, total={}, return={}, cash={}, upi={}, cheque={}, neft={}, credit={}",
+                    direId, total, returnAmt, cashAmt, upiAmt, chequeAmt, neftAmt, creditAmt);
         } catch (Exception e) {
             // Payment details are supplementary — never fail the main delivery update
             log.error("upsertPaymentDetails failed: direId={}, error={}", direId, e.getMessage(), e);
@@ -432,9 +441,13 @@ public class DeliveryRepository {
         }
     }
 
+	/** Open DANs blocking new dispatch — STARTED, PENDING or awaiting the accounts desk. */
 	public Integer countPendingDans() {
 		return jdbcTemplate.queryForObject(
-			"SELECT COUNT(*) FROM dayend_approval WHERE status IN ('STARTED','PENDING')",
+			"SELECT COUNT(*) FROM dayend_approval WHERE status IN (" +
+			com.api.distr.docs.dayend.DayEndStatus.STARTED + "," +
+			com.api.distr.docs.dayend.DayEndStatus.PENDING + "," +
+			com.api.distr.docs.dayend.DayEndStatus.SK_APPROVED + ")",
 			Integer.class);
 	}
 

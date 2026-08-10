@@ -22,6 +22,9 @@ public class DayEndPicklistService {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private com.api.distr.docs.sales.repo.DeliveryRepository deliveryRepository;
+
     /**
      * Returns picklists for a specific day-end record.
      *
@@ -39,13 +42,14 @@ public class DayEndPicklistService {
                 COALESCE(CAST(s.net_value AS DOUBLE PRECISION), 0.0)     AS netValue,
                 COALESCE(da.status, 0)                                   AS assignStatus,
                 COALESCE(ds.delivered, false)                            AS delivered,
-                COALESCE(ds.payment_amount, 0.0)                         AS paymentAmount,
-                ds.payment_mode                                          AS paymentMode,
-                ds.reason                                                AS reason
+                ds.reason                                                AS reason,
+            """ + com.api.distr.docs.sales.dto.PaymentDetailsUtil.COLS + """
             FROM dayend_approval dea
             INNER JOIN delivery_status ds
                 ON  ds.delivery_id      = dea.delivery_id
                 AND ds.delivery_date::date = dea.delivery_date
+            LEFT JOIN payment_details pd
+                ON  pd.dire_id = ds.dire_id
             LEFT JOIN stage_sales_entery s
                 ON  s.dire_id = ds.dire_id
             LEFT JOIN delivery_assignments da
@@ -74,8 +78,9 @@ public class DayEndPicklistService {
                         dto.setNetValue("" + rs.getDouble("netValue"));
                         dto.setAssignStatus(rs.getInt("assignStatus"));
                         dto.setDelivered(rs.getBoolean("delivered"));
-                        dto.setPaymentAmount(rs.getDouble("paymentAmount"));
-                        dto.setPaymentMode(rs.getString("paymentMode"));
+                        dto.setPaymentAmount(rs.getDouble("pd_total"));
+                        dto.setPaymentMode(com.api.distr.docs.sales.dto.PaymentDetailsUtil.toJson(
+                                com.api.distr.docs.sales.dto.PaymentDetailsUtil.fromResultSet(rs)));
                         dto.setReason(rs.getString("reason"));
                         return dto;
                     }
@@ -109,14 +114,11 @@ public class DayEndPicklistService {
             if (count != null && count > 0) {
                 jdbcTemplate.update("""
                         UPDATE delivery_status
-                        SET delivered      = ?,
-                            payment_amount = ?,
-                            payment_mode   = ?,
-                            reason         = ?
-                        WHERE dire_id      = ?
+                        SET delivered = ?,
+                            reason    = ?
+                        WHERE dire_id = ?
                         """,
-                        req.isDelivered(), req.getPaymentAmount(),
-                        req.getPaymentMode(), req.getReason(), direId);
+                        req.isDelivered(), req.getReason(), direId);
             } else {
                 Long deliveryId = null;
                 try {
@@ -128,13 +130,16 @@ public class DayEndPicklistService {
                 }
                 jdbcTemplate.update("""
                         INSERT INTO delivery_status
-                            (dire_id, delivery_id, delivered, payment_amount, payment_mode, reason)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                            (dire_id, delivery_id, delivered, reason)
+                        VALUES (?, ?, ?, ?)
                         """,
-                        direId, deliveryId,
-                        req.isDelivered(), req.getPaymentAmount(),
-                        req.getPaymentMode(), req.getReason());
+                        direId, deliveryId, req.isDelivered(), req.getReason());
             }
+
+            // Payments go to payment_details
+            deliveryRepository.upsertPaymentDetails(direId,
+                    com.api.distr.docs.sales.dto.DeliveryStatusDTO.parsePaymentModes(
+                            req.getPaymentMode(), req.getPaymentAmount()));
 
             int status = req.isDelivered() ? 2 : 1;
             jdbcTemplate.update(

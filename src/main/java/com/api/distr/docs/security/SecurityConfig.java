@@ -32,6 +32,34 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
 
+    /**
+     * app.security.enforce=true  → every endpoint requires a valid JWT except the whitelist below
+     * app.security.enforce=false → legacy behaviour: only /api/users/** is protected
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.security.enforce:false}")
+    private boolean enforceAuth;
+
+    /** Endpoints that must stay public even in enforce mode. */
+    private static final String[] PUBLIC_PATHS = {
+        // Web login flow
+        "/api/auth/**",
+        "/api/company/**",
+        // Mobile delivery-agent app (no web JWT)
+        "/api/delivery/login",
+        "/api/delivery/send-otp",
+        "/api/delivery/deliveryList",
+        "/api/delivery/delivery-status",
+        "/api/delivery/accept",
+        "/api/delivery/reject-assignments",
+        "/api/dayend/start",
+        "/api/dayend/create",
+        "/api/dayend/summary",
+        "/api/dan/returns/**",
+        "/api/dan/pamt-check",
+        // Mobile DAN-close web view (opened via encrypted link, no JWT)
+        "/api/mobile/dan/**",
+    };
+
     public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
     }
@@ -67,25 +95,27 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-
+            .authorizeHttpRequests(auth -> {
                 // AntPathRequestMatcher — no MVC introspection dependency
-                .requestMatchers(new AntPathRequestMatcher("/**", "OPTIONS")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/api/auth/**")).permitAll()
+                auth.requestMatchers(new AntPathRequestMatcher("/**", "OPTIONS")).permitAll();
+                for (String path : PUBLIC_PATHS) {
+                    auth.requestMatchers(new AntPathRequestMatcher(path)).permitAll();
+                }
 
-                // User management
-                .requestMatchers(new AntPathRequestMatcher("/api/users/**", "GET"))
-                    .hasAnyRole("ADMIN", "MANAGER")
-                .requestMatchers(new AntPathRequestMatcher("/api/users/**", "POST"))
-                    .hasRole("ADMIN")
-                .requestMatchers(new AntPathRequestMatcher("/api/users/**", "PUT"))
-                    .hasRole("ADMIN")
-                .requestMatchers(new AntPathRequestMatcher("/api/users/**", "DELETE"))
-                    .hasRole("ADMIN")
+                // User management — always role-protected
+                auth.requestMatchers(new AntPathRequestMatcher("/api/users/**", "GET"))
+                        .hasAnyRole("ADMIN", "MANAGER")
+                    .requestMatchers(new AntPathRequestMatcher("/api/users/**", "POST"))
+                        .hasRole("ADMIN")
+                    .requestMatchers(new AntPathRequestMatcher("/api/users/**", "PUT"))
+                        .hasRole("ADMIN")
+                    .requestMatchers(new AntPathRequestMatcher("/api/users/**", "DELETE"))
+                        .hasRole("ADMIN");
 
-                // All existing endpoints stay public
-                .anyRequest().permitAll()
-            )
+                // Everything else: JWT required when enforcement is on, public otherwise
+                if (enforceAuth) auth.anyRequest().authenticated();
+                else             auth.anyRequest().permitAll();
+            })
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -27,6 +27,9 @@ class DayEndPicklistServiceTest {
     @Mock
     JdbcTemplate jdbcTemplate;
 
+    @Mock
+    com.api.distr.docs.sales.repo.DeliveryRepository deliveryRepository;
+
     @InjectMocks
     DayEndPicklistService service;
 
@@ -165,10 +168,11 @@ class DayEndPicklistServiceTest {
             verify(jdbcTemplate, atLeastOnce()).update(contains("UPDATE delivery_status"), captor.capture());
             Object[] args = captor.getValue();
             assertThat(args[0]).isEqualTo(true);          // delivered
-            assertThat(args[1]).isEqualTo(750.0);         // payment_amount
-            assertThat(args[2]).isEqualTo("UPI:750.0");   // payment_mode
-            assertThat(args[3]).isNull();                 // reason
-            assertThat(args[4]).isEqualTo(109L);          // dire_id (WHERE)
+            assertThat(args[1]).isNull();                 // reason
+            assertThat(args[2]).isEqualTo(109L);          // dire_id (WHERE)
+
+            // Payment now goes to payment_details, not delivery_status
+            verify(deliveryRepository).upsertPaymentDetails(eq(109L), anyList());
         }
 
         @Test
@@ -224,9 +228,9 @@ class DayEndPicklistServiceTest {
             assertThat(args[0]).isEqualTo(102L);          // dire_id
             assertThat(args[1]).isEqualTo(5L);            // delivery_id
             assertThat(args[2]).isEqualTo(true);          // delivered
-            assertThat(args[3]).isEqualTo(400.0);         // payment_amount
-            assertThat(args[4]).isEqualTo("CASH:400.0");  // payment_mode
-            assertThat(args[5]).isNull();                 // reason
+            assertThat(args[3]).isNull();                 // reason
+
+            verify(deliveryRepository).upsertPaymentDetails(eq(102L), anyList());
         }
 
         @Test

@@ -30,6 +30,17 @@ public class DashboardController {
         return dashboardService.getOverallSummary(boyId);
     }
 
+    /** Overall report for a month — from payment_details + stage_sales_entery. */
+    @GetMapping("/overall-report")
+    public OverallReportDto getOverallReport(
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer year) {
+        java.time.LocalDate now = java.time.LocalDate.now();
+        return dashboardService.getOverallReport(
+                month != null ? month : now.getMonthValue(),
+                year  != null ? year  : now.getYear());
+    }
+
     @GetMapping("/deliveries")
     public List<DeliveryDetailsDto> getDeliveryDetails(
             @RequestParam String status) {

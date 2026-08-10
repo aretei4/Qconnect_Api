@@ -33,3 +33,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# JWT signing keys — dev-generated pair at project root is never committed.
+# The pair under src/main/resources/keys/ IS committed so the jar bundles it
+# (classpath:keys/…) and deploys to every environment. If the private key must
+# NOT live in git, delete resources/keys, keep this app on `file:` with an
+# absolute server path, and provide the key at deploy time instead.
+/keys/

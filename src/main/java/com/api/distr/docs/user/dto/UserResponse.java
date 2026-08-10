@@ -11,6 +11,7 @@ public class UserResponse {
     private String username;
     private String fullName;
     private String email;
+    private String phone;
     private Role role;
     private boolean enabled;
     private LocalDateTime createdAt;
@@ -26,6 +27,7 @@ public class UserResponse {
         r.username  = user.getUsername();
         r.fullName  = user.getFullName();
         r.email     = user.getEmail();
+        r.phone     = user.getPhone();
         r.role      = user.getRole();
         r.enabled   = user.isEnabled();
         r.createdAt = user.getCreatedAt();
@@ -46,6 +48,9 @@ public class UserResponse {
 
     public String getEmail()                     { return email; }
     public void setEmail(String email)           { this.email = email; }
+
+    public String getPhone()                     { return phone; }
+    public void setPhone(String phone)           { this.phone = phone; }
 
     public Role getRole()                        { return role; }
     public void setRole(Role role)               { this.role = role; }

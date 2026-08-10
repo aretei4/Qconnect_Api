@@ -26,6 +26,10 @@ class DayEndApprovalServiceTest {
     @Mock
     JdbcTemplate jdbcTemplate;
 
+    /** Approval audit trail (replaced the storekeeper/accountant *_approved_at columns). */
+    @Mock
+    com.api.distr.docs.dan.DanApprovalRepository approvalRepository;
+
     @InjectMocks
     DayEndApprovalService service;
 
@@ -62,7 +66,7 @@ class DayEndApprovalServiceTest {
 
             service.startDayEnd(dto(5L, "23-05-2026"));
 
-            verify(jdbcTemplate).update(contains("SET status = 'STARTED'"), eq(5L));
+            verify(jdbcTemplate).update(contains("SET status = 0"), eq(5L));
             verify(jdbcTemplate, never()).update(contains("INSERT"), any(), any());
         }
 
@@ -77,6 +81,20 @@ class DayEndApprovalServiceTest {
 
             verify(jdbcTemplate).update(contains("INSERT INTO dayend_approval"),
                     eq(7L), eq(LocalDate.of(2026, 1, 1)));
+        }
+
+        @Test
+        @DisplayName("logs the STARTED/CREATED lifecycle event")
+        void logsStartedEvent() {
+            when(jdbcTemplate.queryForObject(contains("SELECT COUNT(*)"), eq(Integer.class), any()))
+                    .thenReturn(0);
+            when(jdbcTemplate.queryForObject(contains("SELECT id FROM dayend_approval"),
+                    eq(Long.class), any()))
+                    .thenReturn(77L);
+
+            service.startDayEnd(dto(7L, "01-01-2026"));
+
+            verify(approvalRepository).logEvent(eq(77L), eq("STARTED"), eq("CREATED"), anyString(), any());
         }
 
         @Test
@@ -106,7 +124,7 @@ class DayEndApprovalServiceTest {
         /** Stubs the two guard queries so tests that focus on the happy path are not affected. */
         private void stubGuards() {
             // Guard 1: no existing PENDING record
-            when(jdbcTemplate.queryForObject(contains("SELECT status"), eq(String.class), any()))
+            when(jdbcTemplate.queryForObject(contains("SELECT status"), eq(Integer.class), any()))
                     .thenThrow(new EmptyResultDataAccessException(1));
             // Guard 2: no pending delivery items
             when(jdbcTemplate.queryForObject(contains("delivery_assignments"), eq(Integer.class), any()))
@@ -117,7 +135,7 @@ class DayEndApprovalServiceTest {
         @DisplayName("updates status to PENDING and saves picklists when row exists")
         void updatesExistingRowToPending() {
             stubGuards();
-            when(jdbcTemplate.queryForObject(contains("FROM dayend_approval"),
+            when(jdbcTemplate.queryForObject(contains("status IN"),
                     eq(Integer.class), any()))
                     .thenReturn(1);
 
@@ -127,7 +145,7 @@ class DayEndApprovalServiceTest {
             service.createDayEnd(d);
 
             ArgumentCaptor<Object[]> captor = ArgumentCaptor.forClass(Object[].class);
-            verify(jdbcTemplate).update(contains("SET status = 'PENDING'"), captor.capture());
+            verify(jdbcTemplate).update(contains("SET status = 1"), captor.capture());
 
             Object[] args = captor.getValue();
             assertThat(args[0]).isEqualTo(3500.0);
@@ -138,7 +156,7 @@ class DayEndApprovalServiceTest {
         @DisplayName("inserts new PENDING row when no existing record")
         void insertsNewRow() {
             stubGuards();
-            when(jdbcTemplate.queryForObject(contains("FROM dayend_approval"),
+            when(jdbcTemplate.queryForObject(contains("status IN"),
                     eq(Integer.class), any()))
                     .thenReturn(0);
 
@@ -157,10 +175,25 @@ class DayEndApprovalServiceTest {
         }
 
         @Test
+        @DisplayName("logs the SUBMITTED/CREATED lifecycle event")
+        void logsSubmittedEvent() {
+            stubGuards();
+            when(jdbcTemplate.queryForObject(contains("status IN"), eq(Integer.class), any()))
+                    .thenReturn(0);
+            when(jdbcTemplate.queryForObject(contains("SELECT id FROM dayend_approval"),
+                    eq(Long.class), any()))
+                    .thenReturn(88L);
+
+            service.createDayEnd(dtoWithPicklists(3L, "10-06-2026", 1200.0, List.of("P001")));
+
+            verify(approvalRepository).logEvent(eq(88L), eq("SUBMITTED"), eq("CREATED"), anyString(), any());
+        }
+
+        @Test
         @DisplayName("stores null picklist_nos when picklist list is empty")
         void storesNullWhenNoPicklists() {
             stubGuards();
-            when(jdbcTemplate.queryForObject(contains("FROM dayend_approval"),
+            when(jdbcTemplate.queryForObject(contains("status IN"),
                     eq(Integer.class), any()))
                     .thenReturn(0);
 
@@ -176,7 +209,7 @@ class DayEndApprovalServiceTest {
         @DisplayName("defaults totalAmount to 0.0 when null")
         void defaultsTotalAmountToZero() {
             stubGuards();
-            when(jdbcTemplate.queryForObject(contains("FROM dayend_approval"),
+            when(jdbcTemplate.queryForObject(contains("status IN"),
                     eq(Integer.class), any()))
                     .thenReturn(0);
 
@@ -194,8 +227,8 @@ class DayEndApprovalServiceTest {
         @Test
         @DisplayName("throws IllegalStateException when day end is already PENDING approval")
         void throwsWhenAlreadyPending() {
-            when(jdbcTemplate.queryForObject(contains("SELECT status"), eq(String.class), any()))
-                    .thenReturn("PENDING");
+            when(jdbcTemplate.queryForObject(contains("SELECT status"), eq(Integer.class), any()))
+                    .thenReturn(1);
 
             assertThatThrownBy(() -> service.createDayEnd(dto(1L, "01-05-2026")))
                     .isInstanceOf(IllegalStateException.class)
@@ -205,11 +238,11 @@ class DayEndApprovalServiceTest {
         @Test
         @DisplayName("allows re-submission when existing record is STARTED (not PENDING)")
         void allowsResubmitWhenStarted() {
-            when(jdbcTemplate.queryForObject(contains("SELECT status"), eq(String.class), any()))
-                    .thenReturn("STARTED");
+            when(jdbcTemplate.queryForObject(contains("SELECT status"), eq(Integer.class), any()))
+                    .thenReturn(0);
             when(jdbcTemplate.queryForObject(contains("delivery_assignments"), eq(Integer.class), any()))
                     .thenReturn(0);
-            when(jdbcTemplate.queryForObject(contains("FROM dayend_approval"),
+            when(jdbcTemplate.queryForObject(contains("status IN"),
                     eq(Integer.class), any()))
                     .thenReturn(1);
 
@@ -222,7 +255,7 @@ class DayEndApprovalServiceTest {
         @Test
         @DisplayName("throws IllegalStateException when delivery items are still pending")
         void throwsWhenPendingDeliveryItems() {
-            when(jdbcTemplate.queryForObject(contains("SELECT status"), eq(String.class), any()))
+            when(jdbcTemplate.queryForObject(contains("SELECT status"), eq(Integer.class), any()))
                     .thenThrow(new EmptyResultDataAccessException(1));
             when(jdbcTemplate.queryForObject(contains("delivery_assignments"), eq(Integer.class), any()))
                     .thenReturn(3);
@@ -236,7 +269,7 @@ class DayEndApprovalServiceTest {
         @DisplayName("proceeds normally when all delivery items are settled (pending count = 0)")
         void proceedsWhenNoPendingItems() {
             stubGuards();
-            when(jdbcTemplate.queryForObject(contains("FROM dayend_approval"),
+            when(jdbcTemplate.queryForObject(contains("status IN"),
                     eq(Integer.class), any()))
                     .thenReturn(0);
 
@@ -272,21 +305,22 @@ class DayEndApprovalServiceTest {
             service.approveDayEndById(d);
 
             ArgumentCaptor<Object[]> captor = ArgumentCaptor.forClass(Object[].class);
-            verify(jdbcTemplate).update(contains("SET status = 'APPROVED'"), captor.capture());
+            verify(jdbcTemplate).update(contains("SET status = 3"), captor.capture());
             assertThat(captor.getValue()[0]).isEqualTo(48L);
         }
 
         @Test
-        @DisplayName("throws RuntimeException when no PENDING record found (already approved / wrong id)")
+        @DisplayName("throws RuntimeException when no approvable record found (already approved / wrong id)")
         void throwsWhenNoPendingFound() {
             when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(0);
 
             DayEndDto d = new DayEndDto();
             d.setDayendId(999L);
+            // no approverRole set → defaults to ACCOUNTANT branch
 
             assertThatThrownBy(() -> service.approveDayEndById(d))
                     .isInstanceOf(RuntimeException.class)
-                    .hasMessageContaining("No pending DayEnd found to approve");
+                    .hasMessageContaining("No approvable DayEnd found for accountant approval");
         }
     }
 
@@ -342,7 +376,7 @@ class DayEndApprovalServiceTest {
             service.rejectDayEndById(d);
 
             ArgumentCaptor<Object[]> captor = ArgumentCaptor.forClass(Object[].class);
-            verify(jdbcTemplate).update(contains("SET status = 'REJECTED'"), captor.capture());
+            verify(jdbcTemplate).update(contains("SET status = 4"), captor.capture());
             assertThat(captor.getValue()[0]).isEqualTo("Amount mismatch");
             assertThat(captor.getValue()[1]).isEqualTo(48L);
         }

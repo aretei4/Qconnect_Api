@@ -1,5 +1,6 @@
 package com.api.distr.docs.dan;
 
+import com.api.distr.docs.dan.dto.DanApprovalRequest;
 import com.api.distr.docs.dan.dto.DanListDto;
 import com.api.distr.docs.dan.dto.DanPaymentDto;
 import com.api.distr.docs.dan.dto.DanReturnDto;
@@ -34,8 +35,12 @@ import java.util.Map;
 public class DanController {
 
     private final DanService service;
+    private final DanApprovalService approvalService;
 
-    public DanController(DanService service) { this.service = service; }
+    public DanController(DanService service, DanApprovalService approvalService) {
+        this.service = service;
+        this.approvalService = approvalService;
+    }
 
     // ── DAN list ──────────────────────────────────────────────────────────────
 
@@ -45,6 +50,70 @@ public class DanController {
             return ResponseEntity.ok(service.getActiveDans());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    // ── Approval workflow (storekeeper → accounts) ────────────────────────────
+
+    /**
+     * POST /api/dan/{danId}/approval
+     * Body: { stage: STOREKEEPER|ACCOUNTS, action: APPROVED|REJECTED, approvedBy?, remarks? }
+     * Records who approved/rejected and returns the updated approval status.
+     */
+    @PostMapping("/{danId}/approval")
+    public ResponseEntity<?> recordApproval(
+            @PathVariable Long danId,
+            @RequestBody DanApprovalRequest request) {
+        try {
+            return ResponseEntity.ok(approvalService.record(danId, request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message",
+                            e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
+        }
+    }
+
+    /** GET /api/dan/{danId}/approval — current approval state + full audit trail. */
+    @GetMapping("/{danId}/approval")
+    public ResponseEntity<?> getApprovalStatus(@PathVariable Long danId) {
+        try {
+            return ResponseEntity.ok(approvalService.getStatus(danId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** GET /api/dan/{danId}/approval/trail — just the event list. */
+    @GetMapping("/{danId}/approval/trail")
+    public ResponseEntity<?> getApprovalTrail(@PathVariable Long danId) {
+        try {
+            return ResponseEntity.ok(approvalService.getTrail(danId));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** GET /api/dan/approvals/pending?stage=STOREKEEPER — DANs awaiting that desk. */
+    @GetMapping("/approvals/pending")
+    public ResponseEntity<?> getPendingApprovals(
+            @RequestParam(required = false, defaultValue = "STOREKEEPER") String stage) {
+        try {
+            return ResponseEntity.ok(approvalService.getPending(stage));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 

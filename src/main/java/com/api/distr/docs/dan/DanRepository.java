@@ -26,8 +26,16 @@ public class DanRepository {
 
     private static final Logger log = LoggerFactory.getLogger(DanRepository.class);
     private final JdbcTemplate jdbc;
+    private final com.api.distr.docs.sales.repo.DeliveryRepository deliveryRepository;
+    private final DanApprovalRepository approvalRepository;
 
-    public DanRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    public DanRepository(JdbcTemplate jdbc,
+                         com.api.distr.docs.sales.repo.DeliveryRepository deliveryRepository,
+                         DanApprovalRepository approvalRepository) {
+        this.jdbc = jdbc;
+        this.deliveryRepository = deliveryRepository;
+        this.approvalRepository = approvalRepository;
+    }
 
     // ── Returns: save ─────────────────────────────────────────────────────────
 
@@ -91,7 +99,24 @@ public class DanRepository {
 
     // ── DAN list ──────────────────────────────────────────────────────────────
 
-    public List<DanListDto> getActiveDans(LocalDate date) {
+    /** DANs whose status is NOT one of {@code excludeStatuses}. */
+    public List<DanListDto> getActiveDans(LocalDate date, int... excludeStatuses) {
+        return getDansWhere("da.status NOT IN (" + csv(excludeStatuses) + ")");
+    }
+
+    /** DANs whose status IS one of {@code includeStatuses}. */
+    public List<DanListDto> getDansWithStatus(LocalDate date, int... includeStatuses) {
+        return getDansWhere("da.status IN (" + csv(includeStatuses) + ")");
+    }
+
+    /** Renders int codes as a SQL list. Safe: ints only, never caller text. */
+    private static String csv(int... codes) {
+        return java.util.Arrays.stream(codes)
+                .mapToObj(Integer::toString)
+                .collect(java.util.stream.Collectors.joining(", "));
+    }
+
+    private List<DanListDto> getDansWhere(String statusPredicate) {
         String sql = """
             SELECT da.id AS dan_id, da.delivery_id, da.delivery_date,
                    (SELECT STRING_AGG(ds.dire_id::text, ',' ORDER BY ds.dire_id)
@@ -103,9 +128,10 @@ public class DanRepository {
                    dm.delivery_name AS agent_name
             FROM dayend_approval da
             LEFT JOIN delivery_master dm ON da.delivery_id = dm.delivery_id
-            WHERE  da.status = 'PENDING'
+            WHERE %s
             ORDER BY da.id
-            """;
+            """.formatted(statusPredicate);
+
         return jdbc.query(sql, new Object[]{}, (rs, rn) -> {
             long      danId   = rs.getLong("dan_id");
             long      delId   = rs.getLong("delivery_id");
@@ -159,35 +185,56 @@ public class DanRepository {
 
     // ── Payment ───────────────────────────────────────────────────────────────
 
+    /**
+     * delivered flag per dire_id. A dire with no delivery_status row is absent
+     * from the map — the caller decides what that means.
+     */
+    public java.util.Map<Long, Boolean> getDeliveredFlags(List<Long> direIds) {
+        java.util.Map<Long, Boolean> out = new java.util.HashMap<>();
+        if (direIds == null || direIds.isEmpty()) return out;
+
+        String sql = "SELECT dire_id, delivered FROM delivery_status WHERE dire_id IN ("
+                + direIds.stream().map(x -> "?").collect(java.util.stream.Collectors.joining(",")) + ")";
+        jdbc.query(sql, direIds.toArray(), rs -> {
+            Object flag = rs.getObject("delivered");
+            out.put(rs.getLong("dire_id"), flag == null ? null : rs.getBoolean("delivered"));
+        });
+        return out;
+    }
+
     public void savePayment(long direId, DanPaymentDto dto) {
+        // delivery_status keeps only delivery state — payments go to payment_details
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM delivery_status WHERE dire_id=?", Integer.class, direId);
         if (count != null && count > 0) {
             jdbc.update("""
                     UPDATE delivery_status
-                       SET delivered=?, payment_amount=?, payment_mode=?, reason=?
+                       SET delivered=?, reason=?
                      WHERE dire_id=?
-                    """, dto.isDelivered(), dto.getPaymentAmount(),
-                    dto.getPaymentMode(), dto.getReason(), direId);
+                    """, dto.isDelivered(), dto.getReason(), direId);
         } else {
             jdbc.update("""
                     INSERT INTO delivery_status
-                      (dire_id, delivered, payment_amount, payment_mode, reason, delivery_date)
-                    VALUES (?,?,?,?,?,CURRENT_DATE)
-                    """, direId, dto.isDelivered(),
-                    dto.getPaymentAmount(), dto.getPaymentMode(), dto.getReason());
+                      (dire_id, delivered, reason, delivery_date)
+                    VALUES (?,?,?,CURRENT_DATE)
+                    """, direId, dto.isDelivered(), dto.getReason());
         }
+
+        deliveryRepository.upsertPaymentDetails(direId,
+                com.api.distr.docs.sales.dto.DeliveryStatusDTO.parsePaymentModes(
+                        dto.getPaymentMode(), dto.getPaymentAmount()));
+
         log.info("savePayment: direId={}, delivered={}", direId, dto.isDelivered());
     }
 
     // ── Submit DAN ────────────────────────────────────────────────────────────
 
     public void submitDan(Long danId) {
-        int updated = jdbc.update("""
-                UPDATE dayend_approval
-                   SET status='CLOSED', approved_at=NOW()
-                 WHERE id=? AND status IN ('STARTED','PENDING')
-                """, danId);
+        int updated = jdbc.update(
+                "UPDATE dayend_approval SET status=" + com.api.distr.docs.dayend.DayEndStatus.CLOSED + ", approved_at=NOW() " +
+                "WHERE id=? AND status IN (" + com.api.distr.docs.dayend.DayEndStatus.STARTED + "," +
+                com.api.distr.docs.dayend.DayEndStatus.PENDING + "," + com.api.distr.docs.dayend.DayEndStatus.APPROVED + ")",
+                danId);
         if (updated == 0)
             throw new IllegalStateException("DAN " + danId + " not found or already closed");
 
@@ -205,7 +252,23 @@ public class DanRepository {
                  WHERE delivery_boy_id = (SELECT delivery_id::text FROM dayend_approval WHERE id = ?)
                    AND status != 10
                 """, danId);
+        approvalRepository.logEvent(danId, "CLOSED", "CLOSED", currentUser(),
+                "DAN closed — " + closed + " assignment(s) closed, " + deleted + " failed removed");
         log.info("submitDan: danId={}, deletedFailed={}, closedAssignments={}", danId, deleted, closed);
+    }
+
+    /** Authenticated username, or "system" when unauthenticated. */
+    private String currentUser() {
+        try {
+            var auth = org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication();
+            if (auth != null
+                    && !(auth instanceof org.springframework.security.authentication.AnonymousAuthenticationToken)
+                    && auth.getName() != null && !auth.getName().isBlank()) {
+                return auth.getName();
+            }
+        } catch (Exception ignored) { }
+        return "system";
     }
 
     // ── Web: save returns by dire_id (DanClosePage) ───────────────────────────
@@ -290,7 +353,7 @@ public class DanRepository {
             dto.setDeliveries(rs.getInt("deliveries"));
             dto.setAmount(rs.getDouble("amount"));
             dto.setReturnsAmt(rs.getDouble("returns_amt"));
-            dto.setStatus("CLOSED".equalsIgnoreCase(rs.getString("status")) ? "Closed" : "Pending");
+            dto.setStatus(rs.getInt("status") == com.api.distr.docs.dayend.DayEndStatus.CLOSED ? "Closed" : "Pending");
             return dto;
         });
     }
@@ -307,7 +370,7 @@ public class DanRepository {
 
         long      deliveryId = ((Number) head.get("delivery_id")).longValue();
         LocalDate date       = ((java.sql.Date) head.get("delivery_date")).toLocalDate();
-        String    status     = String.valueOf(head.get("status"));
+        int       status     = ((Number) head.get("status")).intValue();
 
         com.api.distr.docs.dan.dto.DanReportDetailDto dto = new com.api.distr.docs.dan.dto.DanReportDetailDto();
         dto.setDanId(danId);
@@ -315,7 +378,7 @@ public class DanRepository {
         dto.setDate(date.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
         dto.setAgentName(String.valueOf(head.get("agent_name")));
         dto.setAgentCode("DA-" + deliveryId);
-        dto.setStatus("CLOSED".equalsIgnoreCase(status) ? "Closed" : "Pending");
+        dto.setStatus(status == com.api.distr.docs.dayend.DayEndStatus.CLOSED ? "Closed" : "Pending");
 
         // Per-dire return items for this agent + date
         java.util.Map<Long, Double> returnsByDire = new java.util.HashMap<>();
@@ -342,9 +405,9 @@ public class DanRepository {
                    COALESCE(sse.sales_order_no, '')                     AS invoice_no,
                    COALESCE(sse.cust_desc, '')                          AS cust_name,
                    COALESCE(CAST(sse.net_value AS double precision), 0) AS net_value,
-                   COALESCE(ds.payment_amount, 0)                       AS paid_amount,
-                   ds.payment_mode
+            """ + com.api.distr.docs.sales.dto.PaymentDetailsUtil.COLS + """
             FROM delivery_status ds
+            LEFT JOIN payment_details pd ON pd.dire_id = ds.dire_id
             LEFT JOIN stage_sales_entery sse ON sse.dire_id = ds.dire_id
             WHERE ds.delivery_id = ? AND ds.delivery_date::date = ?
             ORDER BY sse.sales_order_no
@@ -354,11 +417,10 @@ public class DanRepository {
                 row.setInvoiceNo(rs.getString("invoice_no"));
                 row.setCustName(rs.getString("cust_name"));
                 row.setAmount(rs.getDouble("net_value"));
-                row.setPaidAmount(rs.getDouble("paid_amount"));
+                row.setPaidAmount(rs.getDouble("pd_total"));
                 row.setReturnAmt(returnsByDire.getOrDefault(rs.getLong("dire_id"), 0.0));
                 row.setReturns(returnItemsByDire.getOrDefault(rs.getLong("dire_id"), List.of()));
-                for (var pm : com.api.distr.docs.sales.dto.DeliveryStatusDTO
-                        .parsePaymentModes(rs.getString("payment_mode"), rs.getDouble("paid_amount"))) {
+                for (var pm : com.api.distr.docs.sales.dto.PaymentDetailsUtil.fromResultSet(rs)) {
                     var entry = new com.api.distr.docs.dan.dto.DanReportDetailDto.PaymentEntry(
                             pm.getMode(), pm.getAmount());
                     entry.setChequeNo(pm.getChequeNo());
@@ -378,6 +440,40 @@ public class DanRepository {
         dto.setReturnsCount((int) invoices.stream().filter(i -> i.getReturnAmt() > 0).count());
         dto.setNetSettled(dto.getTotalAmount() - dto.getReturnsAmt());
         return dto;
+    }
+
+    /** Per-mode payment totals across a set of dire_ids (from payment_details). */
+    public java.util.Map<String, Double> getPaymentTotals(List<Long> direIds) {
+        java.util.Map<String, Double> totals = new java.util.LinkedHashMap<>();
+        for (String k : List.of("cash", "upi", "cheque", "neft", "credit")) totals.put(k, 0.0);
+        if (direIds == null || direIds.isEmpty()) return totals;
+
+        String ph = direIds.stream().map(x -> "?").collect(Collectors.joining(","));
+        jdbc.query("""
+            SELECT COALESCE(SUM(cash_amount),   0) AS cash,
+                   COALESCE(SUM(upi_amount),    0) AS upi,
+                   COALESCE(SUM(cheque_amount), 0) AS cheque,
+                   COALESCE(SUM(neft_amount),   0) AS neft,
+                   COALESCE(SUM(credit_amount), 0) AS credit
+            FROM payment_details WHERE dire_id IN (""" + ph + ")",
+            direIds.toArray(), rs -> {
+                totals.put("cash",   rs.getDouble("cash"));
+                totals.put("upi",    rs.getDouble("upi"));
+                totals.put("cheque", rs.getDouble("cheque"));
+                totals.put("neft",   rs.getDouble("neft"));
+                totals.put("credit", rs.getDouble("credit"));
+            });
+        return totals;
+    }
+
+    /** Total saved return amount across a set of dire_ids. */
+    public double getReturnTotal(List<Long> direIds) {
+        if (direIds == null || direIds.isEmpty()) return 0.0;
+        String ph = direIds.stream().map(x -> "?").collect(Collectors.joining(","));
+        Double v = jdbc.queryForObject(
+                "SELECT COALESCE(SUM(return_amt), 0) FROM dan_returns WHERE dire_id IN (" + ph + ")",
+                direIds.toArray(), Double.class);
+        return v != null ? v : 0.0;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

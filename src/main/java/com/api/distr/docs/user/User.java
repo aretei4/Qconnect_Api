@@ -9,6 +9,7 @@ public class User {
     private String password;
     private String fullName;
     private String email;
+    private String phone;
     private Role role;
     private boolean enabled;
     private LocalDateTime createdAt;
@@ -46,6 +47,9 @@ public class User {
 
     public String getEmail()                     { return email; }
     public void setEmail(String email)           { this.email = email; }
+
+    public String getPhone()                     { return phone; }
+    public void setPhone(String phone)           { this.phone = phone; }
 
     public Role getRole()                        { return role; }
     public void setRole(Role role)               { this.role = role; }

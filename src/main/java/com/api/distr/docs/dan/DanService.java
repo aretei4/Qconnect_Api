@@ -25,8 +25,21 @@ public class DanService {
 
     // ── DAN list ──────────────────────────────────────────────────────────────
 
+    /** Desktop DAN Close page — hides STARTED (not yet submitted) and CLOSED. */
     public List<DanListDto> getActiveDans() {
-        return repo.getActiveDans(LocalDate.now());
+        return repo.getActiveDans(LocalDate.now(),
+                com.api.distr.docs.dayend.DayEndStatus.STARTED,
+                com.api.distr.docs.dayend.DayEndStatus.CLOSED);
+    }
+
+    /**
+     * Mobile DAN Close — only DANs awaiting one of the two approval desks:
+     * PENDING (storekeeper's turn) and SK_APPROVED (accounts' turn).
+     */
+    public List<DanListDto> getMobileDans() {
+        return repo.getDansWithStatus(LocalDate.now(),
+                com.api.distr.docs.dayend.DayEndStatus.PENDING,
+                com.api.distr.docs.dayend.DayEndStatus.SK_APPROVED);
     }
 
     // ── DAN Close Report ──────────────────────────────────────────────────────
@@ -37,6 +50,18 @@ public class DanService {
 
     public com.api.distr.docs.dan.dto.DanReportDetailDto getReportDetail(long danId) {
         return repo.getReportDetail(danId);
+    }
+
+    public java.util.Map<String, Double> getPaymentTotals(List<Long> direIds) {
+        return repo.getPaymentTotals(direIds);
+    }
+
+    public java.util.Map<Long, Boolean> getDeliveredFlags(List<Long> direIds) {
+        return repo.getDeliveredFlags(direIds);
+    }
+
+    public double getReturnTotal(List<Long> direIds) {
+        return repo.getReturnTotal(direIds);
     }
 
     // ── Returns ───────────────────────────────────────────────────────────────

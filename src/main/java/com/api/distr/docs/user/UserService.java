@@ -42,6 +42,7 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(req.getPassword()));
         user.setFullName(req.getFullName());
         user.setEmail(req.getEmail());
+        user.setPhone(req.getPhone());
         user.setRole(req.getRole());
         user.setEnabled(true);
 
@@ -54,6 +55,7 @@ public class UserService {
 
         if (req.getFullName() != null) user.setFullName(req.getFullName());
         if (req.getEmail()    != null) user.setEmail(req.getEmail());
+        if (req.getPhone()    != null) user.setPhone(req.getPhone());
         if (req.getRole()     != null) user.setRole(req.getRole());
         if (req.getEnabled()  != null) user.setEnabled(req.getEnabled());
         if (req.getPassword() != null && !req.getPassword().isBlank())

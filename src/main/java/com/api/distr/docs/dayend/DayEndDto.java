@@ -26,8 +26,15 @@ public class DayEndDto {
     @JsonAlias("dayend_id")
     private Long dayendId;
 
+    /** "STOREKEEPER" → PENDING→SK_APPROVED; "ACCOUNTANT" → SK_APPROVED→APPROVED */
+    @JsonAlias("approver_role")
+    private String approverRole;
+
     public Long getDayendId()              { return dayendId; }
     public void setDayendId(Long v)        { this.dayendId = v; }
+
+    public String getApproverRole()        { return approverRole; }
+    public void setApproverRole(String v)  { this.approverRole = v; }
 
     public List<String> getPicklistNos()   { return picklistNos; }
     public void setPicklistNos(List<String> v) { this.picklistNos = v; }

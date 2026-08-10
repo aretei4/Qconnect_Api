@@ -21,10 +21,23 @@ public class DeliveryStatusService {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
-	/** Invoice Report — CLOSED (status 10) assignments only, same row shape as statusList. */
-	public List<DeliveryStatusDTO> getClosedByDate(LocalDate fromDate, LocalDate toDate) {
-		log.info("getClosedByDate: fromDate={}, toDate={}", fromDate, toDate);
+	/**
+	 * Invoice Report — CLOSED (status 10) assignments only, same row shape as statusList.
+	 * Payment info comes from payment_details (one row per dire_id, mode amounts in columns).
+	 */
+	public List<DeliveryStatusDTO> getClosedByDate(LocalDate fromDate, LocalDate toDate, String paymentMode) {
+		log.info("getClosedByDate: fromDate={}, toDate={}, paymentMode={}", fromDate, toDate, paymentMode);
 		try {
+			// Whitelisted mode → payment_details column (prevents SQL injection)
+			String modeCondition = switch (paymentMode != null ? paymentMode.toUpperCase() : "") {
+				case "CASH"   -> " AND COALESCE(pd.cash_amount, 0)   > 0";
+				case "UPI"    -> " AND COALESCE(pd.upi_amount, 0)    > 0";
+				case "CHEQUE" -> " AND COALESCE(pd.cheque_amount, 0) > 0";
+				case "NEFT"   -> " AND COALESCE(pd.neft_amount, 0)   > 0";
+				case "CREDIT" -> " AND COALESCE(pd.credit_amount, 0) > 0";
+				default       -> "";
+			};
+
 			String sql = """
 				    SELECT
 				        da.delivery_boy_id                             AS delivery_id,
@@ -36,18 +49,26 @@ public class DeliveryStatusService {
 				        COALESCE(CAST(sse.net_value AS double precision), 0) AS net_value,
 				        'CLOSED'                                       AS status,
 				        COALESCE(ds.otp, false)                        AS otp,
-				        COALESCE(ds.payment_amount, 0.0)               AS payment_amount,
-				        ds.payment_mode,
 				        ds.reason,
+				        COALESCE(pd.total_amount, 0)                   AS payment_amount,
+				        COALESCE(pd.cash_amount, 0)                    AS cash_amount,
+				        COALESCE(pd.upi_amount, 0)                     AS upi_amount,
+				        pd.upi_ref_no,
+				        COALESCE(pd.cheque_amount, 0)                  AS cheque_amount,
+				        pd.cheque_no,
+				        pd.cheque_bank,
+				        COALESCE(pd.neft_amount, 0)                    AS neft_amount,
+				        pd.neft_ref_no,
+				        COALESCE(pd.credit_amount, 0)                  AS credit_amount,
 				        COALESCE(da.delivery_date, da.updated_at)      AS record_date
 				    FROM delivery_assignments da
+				    LEFT JOIN payment_details pd  ON pd.dire_id = da.dire_id
 				    LEFT JOIN delivery_status ds  ON ds.dire_id = da.dire_id
 				    LEFT JOIN delivery_master dm  ON dm.delivery_id::text = da.delivery_boy_id
 				    LEFT JOIN stage_sales_entery sse ON sse.dire_id = da.dire_id
 				    WHERE da.status = 10
 				      AND COALESCE(da.delivery_date, da.updated_at) BETWEEN ? AND ?
-				    ORDER BY record_date DESC
-				""";
+				""" + modeCondition + " ORDER BY record_date DESC";
 
 			LocalDateTime from = fromDate.atStartOfDay();
 			LocalDateTime to   = toDate.atTime(23, 59, 59);
@@ -65,8 +86,33 @@ public class DeliveryStatusService {
 				dto.otp             = rs.getBoolean("otp");
 				dto.payment_amount  = rs.getDouble("payment_amount");
 				dto.reason          = rs.getString("reason");
-				dto.paymentModes    = DeliveryStatusDTO.parsePaymentModes(
-						rs.getString("payment_mode"), dto.payment_amount);
+
+				// Build payment modes from the payment_details columns
+				List<com.api.distr.docs.sales.dto.PaymentModeEntry> modes = new java.util.ArrayList<>();
+				if (rs.getDouble("cash_amount") > 0) {
+					modes.add(new com.api.distr.docs.sales.dto.PaymentModeEntry("CASH", rs.getDouble("cash_amount")));
+				}
+				if (rs.getDouble("upi_amount") > 0) {
+					var m = new com.api.distr.docs.sales.dto.PaymentModeEntry("UPI", rs.getDouble("upi_amount"));
+					m.setReferenceNo(rs.getString("upi_ref_no"));
+					modes.add(m);
+				}
+				if (rs.getDouble("cheque_amount") > 0) {
+					var m = new com.api.distr.docs.sales.dto.PaymentModeEntry("CHEQUE", rs.getDouble("cheque_amount"));
+					m.setChequeNo(rs.getString("cheque_no"));
+					m.setBankName(rs.getString("cheque_bank"));
+					modes.add(m);
+				}
+				if (rs.getDouble("neft_amount") > 0) {
+					var m = new com.api.distr.docs.sales.dto.PaymentModeEntry("NEFT", rs.getDouble("neft_amount"));
+					m.setReferenceNo(rs.getString("neft_ref_no"));
+					modes.add(m);
+				}
+				if (rs.getDouble("credit_amount") > 0) {
+					modes.add(new com.api.distr.docs.sales.dto.PaymentModeEntry("CREDIT", rs.getDouble("credit_amount")));
+				}
+				dto.paymentModes = modes;
+
 				LocalDateTime date = rs.getTimestamp("record_date") != null
 						? rs.getTimestamp("record_date").toLocalDateTime() : null;
 				dto.delivery_date = date != null ? date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "";
@@ -106,12 +152,12 @@ public class DeliveryStatusService {
 				            ELSE        'FAILED'
 				        END                                            AS status,
 				        COALESCE(ds.otp, false)                        AS otp,
-				        COALESCE(ds.payment_amount, 0.0)               AS payment_amount,
-				        ds.payment_mode,
 				        ds.reason,
-				        COALESCE(da.delivery_date, da.updated_at)      AS record_date
+				        COALESCE(da.delivery_date, da.updated_at)      AS record_date,
+				""" + com.api.distr.docs.sales.dto.PaymentDetailsUtil.COLS + """
 				    FROM delivery_assignments da
 				    LEFT JOIN delivery_status ds  ON ds.dire_id = da.dire_id
+				    LEFT JOIN payment_details pd  ON pd.dire_id = da.dire_id
 				    LEFT JOIN delivery_master dm  ON dm.delivery_id::text = da.delivery_boy_id
 				    LEFT JOIN stage_sales_entery sse ON sse.dire_id = da.dire_id
 				    WHERE da.status != 10
@@ -136,12 +182,11 @@ public class DeliveryStatusService {
 			dto.netValue        = rs.getDouble("net_value");
 			dto.status          = rs.getString("status");
 			dto.otp             = rs.getBoolean("otp");
-			dto.payment_amount  = rs.getDouble("payment_amount");
+			dto.payment_amount  = rs.getDouble("pd_total");
 			dto.reason          = rs.getString("reason");
 
-			// Parse "CASH:1000.0,UPI:500.0" → List<PaymentModeEntry>
-			String rawMode = rs.getString("payment_mode");
-			dto.paymentModes = DeliveryStatusDTO.parsePaymentModes(rawMode, dto.payment_amount);
+			// Payment modes come from payment_details columns
+			dto.paymentModes = com.api.distr.docs.sales.dto.PaymentDetailsUtil.fromResultSet(rs);
 
 			// Format date
 			LocalDateTime date = rs.getTimestamp("record_date") != null

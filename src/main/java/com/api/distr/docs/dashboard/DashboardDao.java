@@ -95,13 +95,13 @@ public class DashboardDao {
 	                 boyId, e.getMessage());
 	    }
 
-	    // ── Collected amount (from delivery_status — separate so a failure here can't zero net value) ──
+	    // ── Collected amount (from payment_details — separate so a failure here can't zero net value) ──
 	    StringBuilder amtSql = new StringBuilder(
 	        "SELECT " +
-	        "  COALESCE(SUM(ds.payment_amount) FILTER (WHERE da.status = 2), 0)  AS today_collected, " +
-	        "  COALESCE(SUM(ds.payment_amount) FILTER (WHERE da.status = 2), 0)  AS total_collected " +
+	        "  COALESCE(SUM(pd.total_amount) FILTER (WHERE da.status = 2), 0)  AS today_collected, " +
+	        "  COALESCE(SUM(pd.total_amount) FILTER (WHERE da.status = 2), 0)  AS total_collected " +
 	        "FROM delivery_assignments da " +
-	        "LEFT JOIN delivery_status ds ON ds.dire_id = da.dire_id " +
+	        "LEFT JOIN payment_details pd ON pd.dire_id = da.dire_id " +
 	        "WHERE da.status != 10");
 	    List<Object> amtParams = new ArrayList<>();
 	    if (boyId != null) {
@@ -129,10 +129,10 @@ public class DashboardDao {
 	        "SELECT " +
 	        "  COUNT(*)                                                    AS closed_count, " +
 	        "  COALESCE(SUM(CAST(sse.net_value AS double precision)), 0)   AS closed_value, " +
-	        "  COALESCE(SUM(ds.payment_amount), 0)                         AS closed_collected " +
+	        "  COALESCE(SUM(pd.total_amount), 0)                           AS closed_collected " +
 	        "FROM delivery_assignments da " +
 	        "LEFT JOIN stage_sales_entery sse ON sse.dire_id = da.dire_id " +
-	        "LEFT JOIN delivery_status    ds  ON ds.dire_id  = da.dire_id " +
+	        "LEFT JOIN payment_details    pd  ON pd.dire_id  = da.dire_id " +
 	        "WHERE da.status = 10");
 
 	    List<Object> params = new ArrayList<>();
@@ -148,6 +148,58 @@ public class DashboardDao {
 	        d.setClosedCollected(rs.getDouble("closed_collected"));
 	        return d;
 	    });
+	}
+
+	/**
+	 * Overall report for a month — everything from payment_details + stage_sales_entery.
+	 * Outstanding credit = net value − collected; pending stores = customers not fully paid.
+	 */
+	public OverallReportDto getOverallReport(java.time.LocalDate from, java.time.LocalDate to) {
+	    OverallReportDto dto = new OverallReportDto();
+
+	    jdbcTemplate.query("""
+	        SELECT
+	            COUNT(*)                                                          AS total_orders,
+	            COALESCE(SUM(CAST(sse.net_value AS double precision)), 0)         AS total_net_value,
+	            COALESCE(SUM(pd.total_amount), 0)                                 AS total_collected,
+	            COALESCE(SUM(pd.cash_amount), 0)                                  AS cash_amount,
+	            COALESCE(SUM(pd.upi_amount), 0)                                   AS upi_amount,
+	            COALESCE(SUM(pd.cheque_amount), 0)                                AS cheque_amount,
+	            COALESCE(SUM(pd.neft_amount), 0)                                  AS neft_amount,
+	            COALESCE(SUM(pd.credit_amount), 0)                                AS credit_amount,
+	            COUNT(DISTINCT sse.customer_no) FILTER (
+	                WHERE CAST(sse.net_value AS double precision) > pd.total_amount) AS pending_stores
+	        FROM payment_details pd
+	        JOIN stage_sales_entery sse ON sse.dire_id = pd.dire_id
+	        WHERE pd.payment_date BETWEEN ? AND ?
+	        """, new Object[]{from, to}, rs -> {
+	            dto.setTotalOrders(rs.getInt("total_orders"));
+	            dto.setTotalNetValue(rs.getDouble("total_net_value"));
+	            dto.setTotalCollected(rs.getDouble("total_collected"));
+	            dto.setCashAmount(rs.getDouble("cash_amount"));
+	            dto.setUpiAmount(rs.getDouble("upi_amount"));
+	            dto.setChequeAmount(rs.getDouble("cheque_amount"));
+	            dto.setNeftAmount(rs.getDouble("neft_amount"));
+	            dto.setCreditAmount(rs.getDouble("credit_amount"));
+	            dto.setPendingStores(rs.getInt("pending_stores"));
+	        });
+
+	    dto.setOutstandingCredit(Math.max(0, dto.getTotalNetValue() - dto.getTotalCollected()));
+
+	    dto.setTopCreditStores(jdbcTemplate.query("""
+	        SELECT COALESCE(sse.cust_desc, sse.customer_no)                              AS store,
+	               SUM(GREATEST(CAST(sse.net_value AS double precision) - pd.total_amount, 0)) AS credit
+	        FROM payment_details pd
+	        JOIN stage_sales_entery sse ON sse.dire_id = pd.dire_id
+	        WHERE pd.payment_date BETWEEN ? AND ?
+	        GROUP BY COALESCE(sse.cust_desc, sse.customer_no)
+	        HAVING SUM(GREATEST(CAST(sse.net_value AS double precision) - pd.total_amount, 0)) > 0
+	        ORDER BY credit DESC
+	        LIMIT 5
+	        """, new Object[]{from, to},
+	        (rs, rn) -> new OverallReportDto.CreditStore(rs.getString("store"), rs.getDouble("credit"))));
+
+	    return dto;
 	}
 
 	public List<DeliveryDetailsDto> getDeliveryDetails(String status) {

@@ -1,8 +1,5 @@
 package com.api.distr.docs.dayend;
 
-import com.api.distr.docs.sales.dto.PaymentModeEntry;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -18,22 +15,21 @@ public class DayEndService {
 
     public DayEndSummary getDayEndSummary(LocalDate date, Long deliveryId) {
 
-        // ── 1. Aggregate totals ───────────────────────────────────────────────
+        // ── 1. Delivery counts (delivery_status only — money comes from §2) ────
         StringBuilder summarySql = new StringBuilder("""
             SELECT
-                COUNT(*)                                      AS total,
-                COUNT(*) FILTER (WHERE delivered = true)     AS delivered,
-                COUNT(*) FILTER (WHERE delivered = false)    AS failed,
-                COALESCE(SUM(payment_amount), 0)             AS total_amount
-            FROM delivery_status
-            WHERE delivery_date::date = ?
+                COUNT(*)                                     AS total,
+                COUNT(*) FILTER (WHERE ds.delivered = true)  AS delivered,
+                COUNT(*) FILTER (WHERE ds.delivered = false) AS failed
+            FROM delivery_status ds
+            WHERE ds.delivery_date::date = ?
         """);
 
         List<Object> summaryParams = new ArrayList<>();
         summaryParams.add(date);
 
         if (deliveryId != null) {
-            summarySql.append(" AND delivery_id = ?");
+            summarySql.append(" AND ds.delivery_id = ?");
             summaryParams.add(deliveryId);
         }
 
@@ -45,48 +41,59 @@ public class DayEndService {
                     d.setTotal(rs.getLong("total"));
                     d.setDelivered(rs.getLong("delivered"));
                     d.setFailed(rs.getLong("failed"));
-                    d.setTotalAmount(rs.getDouble("total_amount"));
                     return d;
                 }
         );
 
-        // ── 2. Payment breakdown — parse multi-mode strings in Java ───────────
-        StringBuilder rawPaymentSql = new StringBuilder("""
-            SELECT payment_mode, payment_amount
-            FROM delivery_status
-            WHERE delivery_date::date = ?
-              AND delivered = true
-              AND payment_mode IS NOT NULL
-              AND payment_mode <> ''
+        // ── 2. All money figures — every value comes from payment_details ──────
+        // NOTE: deliberately NOT filtered on ds.delivered. The old filter was
+        // `ds.delivered = true`, which drops rows where delivered is false OR NULL;
+        // their credit_amount vanished from the breakdown while still counting
+        // towards the total, so "Credit amount" rendered as ₹0.00 and cash
+        // collected was overstated by exactly that amount.
+        StringBuilder breakdownSql = new StringBuilder("""
+            SELECT
+                COALESCE(SUM(pd.cash_amount), 0)   AS cash,
+                COALESCE(SUM(pd.upi_amount), 0)    AS upi,
+                COALESCE(SUM(pd.cheque_amount), 0) AS cheque,
+                COALESCE(SUM(pd.neft_amount), 0)   AS neft,
+                COALESCE(SUM(pd.credit_amount), 0) AS credit,
+                COALESCE(SUM(pd.return_amount), 0) AS return_amount,
+                COALESCE(SUM(pd.total_amount), 0)  AS total_amount
+            FROM delivery_status ds
+            JOIN payment_details pd ON pd.dire_id = ds.dire_id
+            WHERE ds.delivery_date::date = ?
         """);
 
         List<Object> paymentParams = new ArrayList<>();
         paymentParams.add(date);
 
         if (deliveryId != null) {
-            rawPaymentSql.append(" AND delivery_id = ?");
+            breakdownSql.append(" AND ds.delivery_id = ?");
             paymentParams.add(deliveryId);
         }
 
-        List<Map<String, Object>> rawPaymentRows =
-                jdbcTemplate.queryForList(rawPaymentSql.toString(), paymentParams.toArray());
-
-        // Accumulate per-mode totals (handles both old "CASH" and new "CASH:1000.0,UPI:500.0")
         Map<String, Double> paymentMap = new LinkedHashMap<>();
         for (String m : List.of("Cash", "UPI", "Card", "Bank Transfer", "Credit")) {
             paymentMap.put(m, 0.0);
         }
+        jdbcTemplate.query(breakdownSql.toString(), paymentParams.toArray(), rs -> {
+            double credit = rs.getDouble("credit");
+            double total  = rs.getDouble("total_amount");
 
-        for (Map<String, Object> row : rawPaymentRows) {
-            String pmStr     = (String) row.get("payment_mode");
-            double rowTotal  = ((Number) row.get("payment_amount")).doubleValue();
+            paymentMap.put("Cash",          rs.getDouble("cash"));
+            paymentMap.put("UPI",           rs.getDouble("upi"));
+            // Cheque folds into the existing "Card" display bucket
+            paymentMap.put("Card",          rs.getDouble("cheque"));
+            paymentMap.put("Bank Transfer", rs.getDouble("neft"));
+            paymentMap.put("Credit",        credit);
 
-            List<PaymentModeEntry> entries = parsePaymentModes(pmStr, rowTotal);
-            for (PaymentModeEntry e : entries) {
-                String key = normalizeMode(e.getMode());
-                paymentMap.merge(key, e.getAmount(), Double::sum);
-            }
-        }
+            // Explicit figures so the client never has to derive them by arithmetic
+            dto.setTotalAmount(total);                       // includes credit
+            dto.setCreditAmount(credit);
+            dto.setReturnAmount(rs.getDouble("return_amount"));
+            dto.setCollectedAmount(total - credit);          // actual cash-equivalent collected
+        });
 
         dto.setAmountByPaymentMode(paymentMap);
 
@@ -95,14 +102,14 @@ public class DayEndService {
             SELECT
                 ds.picklist_no,
                 ds.delivered,
-                ds.payment_amount,
-                ds.payment_mode,
                 ds.reason,
                 COALESCE(ds.dire_id, 0)                             AS dire_id,
                 COALESCE(sse.sales_order_no, '')                    AS invoice_no,
                 COALESCE(sse.cust_desc, '')                         AS cust_desc,
-                COALESCE(CAST(sse.net_value AS double precision), 0) AS net_value
+                COALESCE(CAST(sse.net_value AS double precision), 0) AS net_value,
+        """ + com.api.distr.docs.sales.dto.PaymentDetailsUtil.COLS + """
             FROM delivery_status ds
+            LEFT JOIN payment_details pd ON pd.dire_id = ds.dire_id
             LEFT JOIN stage_sales_entery sse ON sse.dire_id = ds.dire_id
             WHERE ds.delivery_date::date = ?
         """);
@@ -128,93 +135,20 @@ public class DayEndService {
                     d.setCustDesc(rs.getString("cust_desc"));
                     d.setDelivered(rs.getBoolean("delivered"));
                     d.setNetValue(rs.getDouble("net_value"));
-                    d.setPaymentAmount(rs.getDouble("payment_amount"));
+                    d.setPaymentAmount(rs.getDouble("pd_total"));
                     d.setReason(rs.getString("reason"));
-
-                    String pm = rs.getString("payment_mode");
-                    d.setPaymentModes(parsePaymentModes(pm, rs.getDouble("payment_amount")));
+                    d.setPaymentModes(com.api.distr.docs.sales.dto.PaymentDetailsUtil.fromResultSet(rs));
                     return d;
                 }
         );
 
         dto.setPicklists(picklists);
 
-        // ── 4. Recalculate total from parsed paymentModes (more reliable than SUM(payment_amount)) ──
-        double recalcTotal = picklists.stream()
-                .filter(p -> p.getPaymentModes() != null)
-                .flatMap(p -> p.getPaymentModes().stream())
-                .mapToDouble(PaymentModeEntry::getAmount)
-                .sum();
-
-        if (recalcTotal > 0) {
-            dto.setTotalAmount(recalcTotal);
-        }
+        // NOTE: totalAmount is set in §2 straight from SUM(payment_details.total_amount).
+        // The old post-hoc recalculation from the parsed per-picklist modes was removed —
+        // it re-derived a figure payment_details already stores and could disagree with
+        // the credit/return values above.
 
         return dto;
-    }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
-    /**
-     * Parses the payment_mode DB column, supporting three formats:
-     *
-     *  1. JSON array (new):  '[{"mode":"CHEQUE","amount":3900,"chequeNo":"56789","bankName":"uti"},...]'
-     *  2. KEY:AMOUNT pairs (legacy multi-mode): "CASH:1000.0,UPI:500.0"
-     *  3. Plain mode name (legacy single-mode): "CASH"
-     *
-     * @param pmStr     raw payment_mode column value
-     * @param rowTotal  payment_amount column value (fallback for legacy plain-mode format)
-     */
-    private List<PaymentModeEntry> parsePaymentModes(String pmStr, double rowTotal) {
-        if (pmStr == null || pmStr.isBlank()) return Collections.emptyList();
-
-        String trimmed = pmStr.trim();
-
-        // ── Format 1: JSON array ──────────────────────────────────────────────
-        if (trimmed.startsWith("[")) {
-            try {
-                return MAPPER.readValue(trimmed, new TypeReference<List<PaymentModeEntry>>() {});
-            } catch (Exception ignored) {
-                // Fall through to legacy parsing if JSON is malformed
-            }
-        }
-
-        // ── Format 2 & 3: legacy comma-separated "MODE:AMOUNT" or plain "MODE" ─
-        List<PaymentModeEntry> list = new ArrayList<>();
-        for (String part : trimmed.split(",")) {
-            part = part.trim();
-            if (part.isEmpty()) continue;
-
-            if (part.contains(":")) {
-                // "CASH:1000.0"
-                String[] kv = part.split(":", 2);
-                try {
-                    String mode   = kv[0].trim();
-                    double amount = Double.parseDouble(kv[1].trim());
-                    list.add(new PaymentModeEntry(mode, amount));
-                } catch (NumberFormatException ignored) { }
-            } else {
-                // Plain mode name — use total amount as fallback
-                list.add(new PaymentModeEntry(part, rowTotal));
-            }
-        }
-        return list;
-    }
-
-    /**
-     * Maps raw API/DB mode names to consistent display keys used in amountByPaymentMode.
-     */
-    private String normalizeMode(String mode) {
-        if (mode == null) return "Other";
-        switch (mode.toUpperCase().trim()) {
-            case "CASH":                      return "Cash";
-            case "UPI":                       return "UPI";
-            case "CHEQUE": case "CARD":       return "Card";
-            case "BANK_TRANSFER": case "ONLINE": return "Bank Transfer";
-            case "CREDIT":                    return "Credit";
-            default:                          return mode;
-        }
     }
 }

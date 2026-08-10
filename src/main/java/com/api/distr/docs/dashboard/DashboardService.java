@@ -23,6 +23,12 @@ public class DashboardService {
         return dashboardDao.getOverallSummary(boyId);
     }
 
+    public OverallReportDto getOverallReport(int month, int year) {
+        java.time.LocalDate from = java.time.LocalDate.of(year, month, 1);
+        java.time.LocalDate to   = from.withDayOfMonth(from.lengthOfMonth());
+        return dashboardDao.getOverallReport(from, to);
+    }
+
     public List<DeliveryDetailsDto> getDetails(String status) {
         return dashboardDao.getDeliveryDetails(status);
     }

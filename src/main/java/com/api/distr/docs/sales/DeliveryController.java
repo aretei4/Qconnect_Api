@@ -50,10 +50,10 @@ public class DeliveryController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody DeliveryLoginRequest request) {
         try {
-            DeliveryLoginResponse response = deliveryService.login(request.getMobileNumber());
+            DeliveryLoginResponse response = deliveryService.login(request.getMobileNumber(), request.getPassword());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid mobile number");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }
     }
 
@@ -68,15 +68,17 @@ public class DeliveryController {
                 LocalDate.parse(toDate,   fmt));
     }
 
-    /** Invoice Report — CLOSED (status 10) records only. */
+    /** Invoice Report — CLOSED (status 10) records only, optional payment mode filter. */
     @GetMapping("/invoiceReport")
     public List<DeliveryStatusDTO> invoiceReport(
             @RequestParam String fromDate,
-            @RequestParam String toDate) {
+            @RequestParam String toDate,
+            @RequestParam(required = false) String paymentMode) {
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         return service.getClosedByDate(
                 LocalDate.parse(fromDate, fmt),
-                LocalDate.parse(toDate,   fmt));
+                LocalDate.parse(toDate,   fmt),
+                paymentMode);
     }
 
     /**
